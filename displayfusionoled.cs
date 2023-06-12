@@ -11,11 +11,31 @@ using System.Windows.Forms;
 // - Currently focused window if none of these match
 public static class DisplayFusionFunction
 {
-	public static int shiftRange = 16;
+	public static int shiftRange = 160;
 	public static bool enableSizeVariance = false;
 	public static bool enablePositionVariance = true;
 	public static bool enableWholeSpaceShift = true;
 	public static bool enableOutOfBoundChecks = true;
+	
+	public static string topMarginKey = "topMarginKey";
+	public static string bottomMarginKey = "bottomMarginKey";
+	public static string leftMarginKey = "leftMarginKey";
+	public static string rightMarginKey = "rightMarginKey";
+	public static string horizontalSplitKey = "horizontalSplitKey";
+	public static string verticalMiddleSplitKey = "verticalMiddleSplitKey";
+	public static string verticalLeftSplitKey = "verticalLeftSplitKey";
+	public static string verticalRightSplitKey = "verticalRightSplitKey";
+
+	public static int topMargin = 0;
+	public static int bottomMargin = 0;
+	public static int leftMargin = 0;
+	public static int rightMargin = 0;
+	public static int horizontalSplit = 0;
+	public static int verticalMiddleSplit = 0;
+	public static int verticalLeftSplit = 0;
+	public static int verticalRightSplit = 0;
+	
+	public static DateTime lastBordersRecalc = DateTime.MinValue;
 	
 	public static void Run(IntPtr windowHandle)
 	{
@@ -90,7 +110,7 @@ public static class DisplayFusionFunction
 		if (item == null || item.Text == "--- Cancel ---")
 			return;
 		
-		//generateSplitBorders();
+		//generateSplitBorders(windowHandle);
 		RunMy(item.Text, windowHandle);
 	}
 
@@ -209,10 +229,10 @@ public static class DisplayFusionFunction
 		BFS.Window.SetSizeAndLocation(windowHandle, iFinalWinX, iFinalWinY, iFinalWinW, iFinalWinH );
 		
 		// display values for debug
-		MessageBox.Show("iFinalWinX " +iFinalWinX+ "\tiFinalWinY " + iFinalWinY+
-		                "\niFinalWinW " +iFinalWinW+ "\tiFinalWinH " +iFinalWinH+ 
-		                "\nrandomShiftW " +randomShiftW+ "\trandomShiftH " + randomShiftH+
-		                "\nrandomShiftX " +randomShiftX+ "\trandomShiftY " +randomShiftY, "Info", MessageBoxButtons.OK);
+		// MessageBox.Show("iFinalWinX " +iFinalWinX+ "\tiFinalWinY " + iFinalWinY+
+		                // "\niFinalWinW " +iFinalWinW+ "\tiFinalWinH " +iFinalWinH+ 
+		                // "\nrandomShiftW " +randomShiftW+ "\trandomShiftH " + randomShiftH+
+		                // "\nrandomShiftX " +randomShiftX+ "\trandomShiftY " +randomShiftY, "Info", MessageBoxButtons.OK);
 	}
 		
 
@@ -267,19 +287,142 @@ public static class DisplayFusionFunction
 		Random random = new Random();
 		return random.Next(start, end);
 	}
+
 	
-	public static void generateSplitBorders()
+	// topMarginKey, bottomMarginKey, leftMarginKey, rightMarginKey - outer borders
+	// horizontalSplitKey - only one horizontal split
+	// verticalMiddleKey - right in the middle of screen for Left / Right split or 4 corners split
+	// verticalLeftKey - left border when doing 1-1-1, 1-2 splits 
+	// verticalRightKey - right border when doing 1-1-1 and 2-1 splits
+	public static void generateSplitBorders(IntPtr windowHandle)
 	{
-		string horizontalBorderKey = "horizontalBorderKey";
-        string storedVal = BFS.ScriptSettings.ReadValue(horizontalBorderKey);
+		Rectangle monitorRect = BFS.Monitor.GetMonitorWorkAreaByWindow(windowHandle);
 		
-		if (string.IsNullOrEmpty(storedVal)) {
-			MessageBox.Show("Not stored", "xx", MessageBoxButtons.OK);
-			BFS.ScriptSettings.WriteValue(horizontalBorderKey, "my val");
-		}
-		else 
+		// topMarginKey
+		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(topMarginKey))
 		{
-			MessageBox.Show("Already stored:" + storedVal, "xx", MessageBoxButtons.OK);
+			topMargin = 0 + GetRandomShift(0, shiftRange);
+			BFS.ScriptSettings.WriteValue(topMarginKey, topMargin.ToString());
 		}
+		else topMargin = readIntKey(topMarginKey);
+				
+		// bottomMarginKey
+		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(bottomMarginKey))
+		{
+			bottomMargin = monitorRect.Height - GetRandomShift(0, shiftRange);
+			BFS.ScriptSettings.WriteValue(bottomMarginKey, bottomMargin.ToString());
+		}
+		else bottomMargin = readIntKey(bottomMarginKey);
+		
+		// leftMarginKey
+		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(leftMarginKey))
+		{
+			leftMargin = 0 + GetRandomShift(0, shiftRange);
+			BFS.ScriptSettings.WriteValue(leftMarginKey, leftMargin.ToString());
+		}
+		else leftMargin = readIntKey(leftMarginKey);
+				
+		// rightMarginKey
+		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(rightMarginKey))
+		{
+			rightMargin = monitorRect.Width - GetRandomShift(0, shiftRange);
+			BFS.ScriptSettings.WriteValue(rightMarginKey, rightMargin.ToString());
+		}
+		else rightMargin = readIntKey(rightMarginKey);
+		
+		// horizontalSplitKey
+		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(horizontalSplitKey))
+		{
+			horizontalSplit = monitorRect.Height / 2 + GetRandomShift(shiftRange);
+			BFS.ScriptSettings.WriteValue(horizontalSplitKey, horizontalSplit.ToString());
+		}
+		else horizontalSplit = readIntKey(horizontalSplitKey);
+
+		// verticalMiddleSplitKey
+		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(verticalMiddleSplitKey))
+		{
+			verticalMiddleSplit = monitorRect.Width / 2 + GetRandomShift(shiftRange);
+			BFS.ScriptSettings.WriteValue(verticalMiddleSplitKey, verticalMiddleSplit.ToString());
+		}
+		else verticalMiddleSplit = readIntKey(verticalMiddleSplitKey);
+
+		// verticalLeftSplitKey
+		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(verticalLeftSplitKey))
+		{
+			verticalLeftSplit = monitorRect.Width / 3 + GetRandomShift(shiftRange);
+			BFS.ScriptSettings.WriteValue(verticalLeftSplitKey, verticalLeftSplit.ToString());
+		}		
+		else verticalLeftSplit = readIntKey(verticalLeftSplitKey);
+
+		// verticaRightSplitKey
+		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(verticalRightSplitKey))
+		{
+			verticalRightSplit = monitorRect.Width * 2 / 3 + GetRandomShift(shiftRange);
+			BFS.ScriptSettings.WriteValue(verticalRightSplitKey, verticalRightSplit.ToString());
+		}
+		else verticalRightSplit = readIntKey(verticalRightSplitKey);
+		
+		DateTime currentTime = DateTime.Now; // Pobranie aktualnego czasu
+		lastBordersRecalc = currentTime;
+		
+		// display values for debug
+		// MessageBox.Show("topMargin " + topMargin + "\tbottomMargin " + bottomMargin +
+		                // "\nleftMargin " + leftMargin + "\trightMargin " + rightMargin + 
+		                // "\nhorizontalSplit " + horizontalSplit + "\tverticalMiddleSplit " + verticalMiddleSplit +
+		                // "\nverticalLeftSplit " + verticalLeftSplit + "\tverticaRightKey " + verticalRightSplit, "Info", MessageBoxButtons.OK);
+	}
+	
+	public static void Left(IntPtr windowHandle)
+	{
+		generateSplitBorders(windowHandle);
+		//Rectangle monitorRect = BFS.Monitor.GetMonitorWorkAreaByWindow(windowHandle);
+		
+		int width = verticalMiddleSplit - leftMargin;
+		int height = bottomMargin - topMargin;
+		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+		
+		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
+				// "\nwidth " + width + "\theight " + height );
+	}
+	
+	public static void Right(IntPtr windowHandle)
+	{
+		generateSplitBorders(windowHandle);
+		//Rectangle monitorRect = BFS.Monitor.GetMonitorWorkAreaByWindow(windowHandle);
+		
+		int width = rightMargin - verticalMiddleSplit;
+		int height = bottomMargin - topMargin;
+		BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
+		
+		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
+				// "\nwidth " + width + "\theight " + height );
+	}
+	
+	public static bool keyAlreadyGenerated(string key)
+	{
+		return !string.IsNullOrEmpty(BFS.ScriptSettings.ReadValue(key));
+	}
+	
+	public static int readIntKey(string key)
+	{
+		return int.Parse(BFS.ScriptSettings.ReadValue(key));
+	}
+	
+	public static bool timerBorderRecalculateExpired()
+	{
+		DateTime currentTime = DateTime.Now; // Pobranie aktualnego czasu
+		TimeSpan elapsedTime = currentTime - lastBordersRecalc; // Obliczenie czasu, który minął
+
+		if (elapsedTime.TotalSeconds >= 15)
+		{
+			// Triger borders change
+			return true;
+		}
+		else
+		{
+			// too soon to borders change
+			return false;
+		}
+
 	}
 }
