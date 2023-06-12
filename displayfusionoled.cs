@@ -38,11 +38,11 @@ public static class DisplayFusionFunction
 				//{{ "Aquamarine", "Black", "Move Window to Top-Right Corner and Size 50%" }},
 				//{{ "Aquamarine", "Black", "Move Window to Bottom-Left Corner and Size 50%" }},
 				//{{ "Aquamarine", "Black", "Move Window to Bottom-Right Corner and Size 50%" }},
-				{{ "Aquamarine", "Black", "Center100" }},
-				{{ "Aquamarine", "Black", "Center95" }},
-				{{ "Aquamarine", "Black", "Center90" }},
-				{{ "Aquamarine", "Black", "Center80" }},
-				{{ "Aquamarine", "Black", "Center60" }},
+				{{ "Aquamarine", "Black", "SingleWindow100" }},
+				{{ "Aquamarine", "Black", "SingleWindow95" }},
+				{{ "Aquamarine", "Black", "SingleWindow90" }},
+				{{ "Aquamarine", "Black", "SingleWindow80" }},
+				{{ "Aquamarine", "Black", "SingleWindow60" }},
 				
 				{{ "Khaki", "Black", "Left" }},
 				{{ "Khaki", "Black", "Right" }},
@@ -81,60 +81,68 @@ public static class DisplayFusionFunction
 		}
 	}
 	
-	public static void Center100(IntPtr windowHandle)
+	//this function will get the text of the item and try to run it as a DisplayFusion function
+	//"--- Cancel ---", change it to what you used in MenuEntries-List
+	private static void MenuItem_Click(object sender, EventArgs e, IntPtr windowHandle)
 	{
-		CenterX(windowHandle, 1);
+		
+		ToolStripItem item = sender as ToolStripItem;
+		if (item == null || item.Text == "--- Cancel ---")
+			return;
+		
+		//generateSplitBorders();
+		RunMy(item.Text, windowHandle);
+	}
+
+	private static void RunMy(string functionName, IntPtr windowHandle)
+	{
+		//MessageBox.Show("To jest powiadomienie RunMy.", "Tytuł powiadomienia", MessageBoxButtons.OK);
+		
+		// Get type, that contains function
+        Type type = typeof(DisplayFusionFunction); 
+        
+        // Get method based on the name
+        MethodInfo method = type.GetMethod(functionName);
+		
+        if (method != null)
+        {
+            method.Invoke(null, new object[] { windowHandle });
+        }
+        else
+        {
+			MessageBox.Show("Function not found: " + functionName, "Error", MessageBoxButtons.OK);
+        }
 	}
 	
-	public static void Center95(IntPtr windowHandle)
+	public static void SingleWindow100(IntPtr windowHandle)
 	{
-		CenterX(windowHandle, 0.95);
+		SingleWindowX(windowHandle, 1);
 	}
 	
-	public static void Center90(IntPtr windowHandle)
+	public static void SingleWindow95(IntPtr windowHandle)
 	{
-		CenterX(windowHandle, 0.90);
+		SingleWindowX(windowHandle, 0.95);
+	}
+	
+	public static void SingleWindow90(IntPtr windowHandle)
+	{
+		SingleWindowX(windowHandle, 0.90);
 	}
 		
-	public static void Center80(IntPtr windowHandle)
+	public static void SingleWindow80(IntPtr windowHandle)
 	{
-		CenterX(windowHandle, 0.80);
+		SingleWindowX(windowHandle, 0.80);
 	}
 	
-	public static void Center60(IntPtr windowHandle)
+	public static void SingleWindow60(IntPtr windowHandle)
 	{
-		CenterX(windowHandle, 0.60);
+		SingleWindowX(windowHandle, 0.60);
 	}
+
 	
-	// zoneFill - what percetange of dedicated zone window shoudl occupy, e.g 0.9 for 90% space fill
-	// horizontalFactor - to determine how many zones there will be in the screen e.g. 0.33 (1/3) for one out of three zones 
-	// verticalFactor - same as horizontal but for vertical number of zones
-	// returns width, height, shiftW, shiftH
-	public static (int, int, int, int) CalculateFinalWindowSize(double zoneFill, double horizontalFactor, double verticalFactor)
+	public static void SingleWindowX(IntPtr windowHandle, double factor)
 	{
-		// calculate bae width and height
-		int width = Convert.ToInt32(monitorRect.Width * percentageFill * horizontalFactor)
-		int height = Convert.ToInt32(monitorRect.Height * percentageFill * verticalFactor)
-		
-		int shiftW = 0, shiftH = 0;
-		
-		// when enabled add variance
-		if (enableSizeVariance)
-		{
-			// only decrease window size so it is not out of bounds
-			shiftW = GetRandomShift(-shiftRange, 0);
-			shiftW = GetRandomShift(-shiftRange, 0);
-			
-			width = width + shiftW;
-			height = height + shift;
-		}
-		
-		return (width, height, shiftW, shiftH);
-	}
-	
-	public static void CenterX(IntPtr windowHandle, double factor)
-	{
-		// MessageBox.Show("To jest powiadomienie Center90.", "Tytuł powiadomienia", MessageBoxButtons.OK);
+		// MessageBox.Show("To jest powiadomienie SingleWindow90.", "Tytuł powiadomienia", MessageBoxButtons.OK);
 
 		// check to see if there was an error, if there was, exit function
 		if (windowHandle == IntPtr.Zero)
@@ -206,154 +214,38 @@ public static class DisplayFusionFunction
 		                "\nrandomShiftW " +randomShiftW+ "\trandomShiftH " + randomShiftH+
 		                "\nrandomShiftX " +randomShiftX+ "\trandomShiftY " +randomShiftY, "Info", MessageBoxButtons.OK);
 	}
+		
+
+
 	
-	public static void CenterXold(IntPtr windowHandle, double factor)
+	// zoneFill - what percetange of dedicated zone window shoudl occupy, e.g 0.9 for 90% space fill
+	// horizontalFactor - to determine how many zones there will be in the screen e.g. 0.33 (1/3) for one out of three zones 
+	// verticalFactor - same as horizontal but for vertical number of zones
+	// returns width, height, shiftW, shiftH
+	public static (int, int, int, int) CalculateFinalWindowSize(IntPtr windowHandle, double zoneFill, double horizontalFactor, double verticalFactor)
 	{
-		// MessageBox.Show("To jest powiadomienie Center90.", "Tytuł powiadomienia", MessageBoxButtons.OK);
-
-		// check to see if there was an error, if there was, exit function
-		if (windowHandle == IntPtr.Zero)
-			return;
-
-		// get the position of the window in the monitor, and the current monitor
-		Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
 		Rectangle monitorRect = BFS.Monitor.GetMonitorWorkAreaByWindow(windowHandle);
-
-		// double factorComplement = 1 - factor;
 		
-		// int randomShiftW = GetRandomShift(shiftRange);
-		// int randomShiftH = GetRandomShift(shiftRange);
-		// int randomShiftX = GetRandomShift(shiftRange);
-		// int randomShiftY = GetRandomShift(shiftRange);
-
-		// int iFinalWinW = Convert.ToInt32(monitorRect.Width * factor) + randomShiftW;
-		// int iFinalWinH = Convert.ToInt32(monitorRect.Height * factor) + randomShiftH;
+		// calculate bae width and height
+		int width = Convert.ToInt32(monitorRect.Width * zoneFill * horizontalFactor);
+		int height = Convert.ToInt32(monitorRect.Height * zoneFill * verticalFactor);
 		
-		// int iFinalWinX = Convert.ToInt32(monitorRect.Width * factorComplement/2) + randomShiftX;
-		// int iFinalWinY = Convert.ToInt32(monitorRect.Height * factorComplement/2) + randomShiftY;
+		int shiftW = 0, shiftH = 0;
 		
-		// if ( iFinalWinW > monitorRect.Width) iFinalWinW = monitorRect.Width; // check window to wide
-		// if ( iFinalWinH > monitorRect.Height) iFinalWinH = monitorRect.Height; // check window to high
-		
-		// if (iFinalWinX < 0) iFinalWinX = 0; // check window out of bound left
-		// if (iFinalWinY < 0) iFinalWinY = 0; // check window out of bound top
-
-		// if (( iFinalWinX + iFinalWinW) > monitorRect.Width ) iFinalWinX = monitorRect.Width - iFinalWinW; // check window out of bound right
-		// if (( iFinalWinY + iFinalWinH) > monitorRect.Height ) iFinalWinY = monitorRect.Height - iFinalWinH; // check window out of bound bottom
-		
-		// BFS.Window.SetSizeAndLocation(windowHandle, iFinalWinX, iFinalWinY, iFinalWinW, iFinalWinH );
-		// MessageBox.Show("iFinalWinX " +iFinalWinX+ "\tiFinalWinY " + iFinalWinY+
-		                // "\niFinalWinW " +iFinalWinW+ "\tiFinalWinH " +iFinalWinH+ 
-		                // "\nrandomShiftW " +randomShiftW+ "\trandomShiftH " + randomShiftH+
-		                // "\nrandomShiftX " +randomShiftX+ "\trandomShiftY " +randomShiftY, "Info", MessageBoxButtons.OK);
-	}
-		
-	public static void Left(IntPtr windowHandle)
-	{
-		//MessageBox.Show("To jest powiadomienie Center90.", "Tytuł powiadomienia", MessageBoxButtons.OK);
-
-		//check to see if there was an error, if there was, exit function
-		if (windowHandle == IntPtr.Zero)
-			return;
-
-		//get the position of the window in the monitor, and the current monitor
-		Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
-		Rectangle monitorRect = BFS.Monitor.GetMonitorWorkAreaByWindow(windowHandle);
-
-		double factor = 1;
-		double factorComplement = 1 - factor;
-		
-		int randomShiftW = GetRandomShift(shiftRange);
-		int randomShiftH = GetRandomShift(shiftRange);
-		int randomShiftX = GetRandomShift(shiftRange);
-		int randomShiftY = GetRandomShift(shiftRange);
-
-		int iFinalWinW = Convert.ToInt32(monitorRect.Width * factor) / 2 + randomShiftW;
-		int iFinalWinH = Convert.ToInt32(monitorRect.Height * factor) + randomShiftH;
-		
-		int iFinalWinX = (Convert.ToInt32(monitorRect.Width * factorComplement) + randomShiftX)/2;
-		int iFinalWinY = (Convert.ToInt32(monitorRect.Height * factorComplement) + randomShiftY)/2;
-
-		if (( iFinalWinX + iFinalWinW) > monitorRect.Width ) {
-			iFinalWinX = monitorRect.Width - iFinalWinW;
-		}
-		
-		if (( iFinalWinY + iFinalWinH) > monitorRect.Height ) {
-			iFinalWinY = monitorRect.Height - iFinalWinH;
-		}
-
-		BFS.Window.SetSizeAndLocation(windowHandle, iFinalWinX, iFinalWinY, iFinalWinW, iFinalWinH );
-	}
+		// when enabled add variance
+		if (enableSizeVariance)
+		{
+			// only decrease window size so it is not out of bounds
+			shiftW = GetRandomShift(-shiftRange, 0);
+			shiftW = GetRandomShift(-shiftRange, 0);
 			
-	public static void Right(IntPtr windowHandle)
-	{
-		//MessageBox.Show("To jest powiadomienie Center90.", "Tytuł powiadomienia", MessageBoxButtons.OK);
-
-		//check to see if there was an error, if there was, exit function
-		if (windowHandle == IntPtr.Zero)
-			return;
-
-		//get the position of the window in the monitor, and the current monitor
-		Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
-		Rectangle monitorRect = BFS.Monitor.GetMonitorWorkAreaByWindow(windowHandle);
-
-		double factor = 1;
-		double factorComplement = 1 - factor;
-		
-		int randomShiftW = GetRandomShift(shiftRange);
-		int randomShiftH = GetRandomShift(shiftRange);
-		int randomShiftX = GetRandomShift(shiftRange);
-		int randomShiftY = GetRandomShift(shiftRange);
-
-		int iFinalWinW = Convert.ToInt32(monitorRect.Width * factor) / 2 + randomShiftW;
-		int iFinalWinH = Convert.ToInt32(monitorRect.Height * factor) + randomShiftH;
-		
-		int iFinalWinX = (Convert.ToInt32(monitorRect.Width * factorComplement) + randomShiftX)/2 + iFinalWinW;
-		int iFinalWinY = (Convert.ToInt32(monitorRect.Height * factorComplement) + randomShiftY)/2;
-
-		if (( iFinalWinX + iFinalWinW) > monitorRect.Width ) {
-			iFinalWinX = monitorRect.Width - iFinalWinW;
+			width = width + shiftW;
+			height = height + shiftH;
 		}
 		
-		if (( iFinalWinY + iFinalWinH) > monitorRect.Height ) {
-			iFinalWinY = monitorRect.Height - iFinalWinH;
-		}
-
-		BFS.Window.SetSizeAndLocation(windowHandle, iFinalWinX, iFinalWinY, iFinalWinW, iFinalWinH );
-	}
-	
-	private static void RunMy(string functionName, IntPtr windowHandle)
-	{
-		//MessageBox.Show("To jest powiadomienie RunMy.", "Tytuł powiadomienia", MessageBoxButtons.OK);
-		
-		
-	    // Pobranie typu, w którym znajduje się funkcja
-        Type type = typeof(DisplayFusionFunction); 
-        
-        // Pobranie metody na podstawie jej nazwy
-        MethodInfo method = type.GetMethod(functionName);
-		
-        if (method != null)
-        {
-            // Wywołanie metody
-            method.Invoke(null, new object[] { windowHandle });
-        }
-        else
-        {
-			MessageBox.Show("Nie znaleziono metody o nazwie: " + functionName, "Error", MessageBoxButtons.OK);
-        }
+		return (width, height, shiftW, shiftH);
 	}
 
-	//this function will get the text of the item and try to run it as a DisplayFusion function
-	//"--- Cancel ---", change it to what you used in MenuEntries-List
-	private static void MenuItem_Click(object sender, EventArgs e, IntPtr windowHandle)
-	{
-		ToolStripItem item = sender as ToolStripItem;
-		if (item == null || item.Text == "--- Cancel ---")
-			return;
-		
-		RunMy(item.Text, windowHandle);
-	}
 	
 	public static int GetRandomShift(int range)
 	{
@@ -374,5 +266,20 @@ public static class DisplayFusionFunction
 	{
 		Random random = new Random();
 		return random.Next(start, end);
+	}
+	
+	public static void generateSplitBorders()
+	{
+		string horizontalBorderKey = "horizontalBorderKey";
+        string storedVal = BFS.ScriptSettings.ReadValue(horizontalBorderKey);
+		
+		if (string.IsNullOrEmpty(storedVal)) {
+			MessageBox.Show("Not stored", "xx", MessageBoxButtons.OK);
+			BFS.ScriptSettings.WriteValue(horizontalBorderKey, "my val");
+		}
+		else 
+		{
+			MessageBox.Show("Already stored:" + storedVal, "xx", MessageBoxButtons.OK);
+		}
 	}
 }
