@@ -46,6 +46,13 @@ public static class DisplayFusionFunction
 	public static string KEY_CTRL = "17";
 	public static string KEY_A = "65";
 	public static string KEY_Q = "81";
+
+	public enum WindowHorizontalPosition
+	{
+		Left,
+		Right,
+		Middle
+	}
 	
 	public static void Run(IntPtr windowHandle)
 	{
@@ -68,30 +75,16 @@ public static class DisplayFusionFunction
 				{{ "Khaki", "Black", "Right" }},
 				
 				// {{ "PaleGreen", "Black", "TopLeft" }},
-				// {{ "PaleGreen", "Black", "TopRight" }},
-				// {{ "PaleGreen", "Black", "BottomLeft" }},
-				// {{ "PaleGreen", "Black", "BottomRight" }},
 				
 				// {{ "DodgerBlue", "Black", "TopLeftmost" }},
-				// {{ "DodgerBlue", "Black", "TopMiddle" }},
-				// {{ "DodgerBlue", "Black", "TopRightmost" }},
-				// {{ "DodgerBlue", "Black", "BottomLeftmost" }},
-				// {{ "DodgerBlue", "Black", "BottomMiddle" }},
-				// {{ "DodgerBlue", "Black", "BottomRightmost" }},
 				
 				{{ "DodgerBlue", "Black", "SixSplitLeft" }},
 				{{ "DodgerBlue", "Black", "SixSplitMiddle" }},
 				{{ "DodgerBlue", "Black", "SixSplitRight" }},
 				
-				{{ "DarkViolet", "Black", "NineSplit" }},
-				// {{ "DarkViolet", "Black", "" }},
-				// {{ "DarkViolet", "Black", "" }},
-				// {{ "DarkViolet", "Black", "" }},
-				// {{ "DarkViolet", "Black", "" }},
-				// {{ "DarkViolet", "Black", "" }},
-				// {{ "DarkViolet", "Black", "" }},
-				// {{ "DarkViolet", "Black", "" }},
-				// {{ "DarkViolet", "Black", "" }},
+				{{ "DarkViolet", "Black", "NineSplitLeft" }},
+				{{ "DarkViolet", "Black", "NineSplitMiddle" }},
+				{{ "DarkViolet", "Black", "NineSplitRight" }},
 				
 				{{ "Pink", "Maroon", "--- Cancel ---" }}
 			};
@@ -527,17 +520,69 @@ public static class DisplayFusionFunction
 			BottomRightmost(windowHandle);
 		}
 	}
-	
-	public static void NineSplit(IntPtr windowHandle)
+
+	public static void NineSplitLeft(IntPtr windowHandle)
 	{
-		if(BFS.Input.IsKeyDown(MergeKeyCodes(KEY_A, KEY_Q)))
+		NineSplit(windowHandle, WindowHorizontalPosition.Left);
+	}
+	public static void NineSplitMiddle(IntPtr windowHandle)
+	{
+		NineSplit(windowHandle, WindowHorizontalPosition.Middle);
+	}
+	public static void NineSplitRight(IntPtr windowHandle)
+	{
+		NineSplit(windowHandle, WindowHorizontalPosition.Right);
+	}
+	
+	public static void NineSplit(IntPtr windowHandle, WindowHorizontalPosition position)
+	{
+		generateSplitBorders(windowHandle);
+
+		int height = 0, width = 0;
+		int x = 0, y = 0;
+
+		switch (position)
 		{
-			generateSplitBorders(windowHandle);
-		
-			int width = verticalLeftSplit - leftMargin;
-			int height = horizontalBottomSplit - topMargin;
-			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+			case WindowHorizontalPosition.Left:
+				width = verticalLeftSplit - leftMargin;
+				x = leftMargin;
+				break;
+			case WindowHorizontalPosition.Middle:
+				width = verticalRightSplit - verticalLeftSplit;
+				x = verticalLeftSplit;
+				break;
+			case WindowHorizontalPosition.Right:
+				width = rightMargin - verticalRightSplit;
+				x = verticalRightSplit;
+				break;
+			default:
+				MessageBox.Show("No switch for position " + position.ToString() + " in function NineSplit()");
+				break;
 		}
+
+		if(BFS.Input.IsKeyDown(KEY_SHIFT) && !BFS.Input.IsKeyDown(KEY_CTRL)) // top only
+		{
+			height = horizontalTopSplit - topMargin;
+			y = topMargin;
+		}
+		else if(!BFS.Input.IsKeyDown(KEY_SHIFT) && BFS.Input.IsKeyDown(KEY_CTRL)) // bottom only
+		{
+			height = bottomMargin - horizontalBottomSplit;
+			y = horizontalBottomSplit;
+		}
+		else if (BFS.Input.IsKeyDown(KEY_SHIFT) && BFS.Input.IsKeyDown(KEY_CTRL)) // both up and down - certer
+		{
+			height = horizontalBottomSplit - horizontalTopSplit;
+			y = horizontalTopSplit;
+		}
+		else // no key modifier - full height
+		{
+			height = bottomMargin - topMargin;
+			y = topMargin;
+		}
+
+		BFS.Window.SetSizeAndLocation(windowHandle, x, y, width, height);
+
 	}
 	
 	public static bool keyAlreadyGenerated(string key)
