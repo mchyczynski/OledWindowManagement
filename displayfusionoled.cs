@@ -3,6 +3,7 @@ using System.Text;
 using System.Reflection;
 using System.Drawing;
 using System.Windows.Forms;
+using System.ComponentModel;
 
 // The 'windowHandle' parameter will contain the window handle for the:
 // - Active window when run by hotkey
@@ -58,7 +59,7 @@ public static class DisplayFusionFunction
 			{
 				//	{{ "Background-Color", "Foreground-Color", "Function-Name" }}
 				
-				{{ "Aquamarine", "Black", "SingleWindow100" }},
+				{{ "Aquamarine", "Black", "SingleWindow100"}},
 				{{ "Aquamarine", "Black", "SingleWindow95" }},
 				{{ "Aquamarine", "Black", "SingleWindow90" }},
 				{{ "Aquamarine", "Black", "SingleWindow80" }},
@@ -106,10 +107,42 @@ public static class DisplayFusionFunction
 			//add items to the menu, and use our custom function when a user clicks on the items
 			for ( int i = 0; i < ( MenuEntries.Length / MenuEntries.Rank ); i++ )
 			{
-				menu.Items.Add(MenuEntries[i, 0, 2]); // add function name into PPM menu an entry
+				menu.Items.Add(MenuEntries[i, 0, 2]); // add function name into PPM menu as entry
 				menu.Items[menu.Items.Count - 1].Click += (sender, e) => MenuItem_Click(sender, e, windowHandle);; // always invoke MenuItem_Click
+				// menu.Items[menu.Items.Count - 1].Opening += (sender, e) => contextMenuStrip1_Opening(sender, e, windowHandle);; // always invoke MenuItem_Click
 				menu.Items[menu.Items.Count - 1].BackColor = Color.FromName( MenuEntries[i, 0, 0]);
 				menu.Items[menu.Items.Count - 1].ForeColor = Color.FromName( MenuEntries[i, 0, 1]);
+
+				ToolStripMenuItem submenu1 = new ToolStripMenuItem("New");
+				ToolStripMenuItem submenu2 = new ToolStripMenuItem("Old");
+
+				submenu1.Click += Click1;
+				submenu2.Click += Click2;
+
+// 				submenu1.DropDownOpening += (sender, e) =>
+// {
+//     e.Cancel = true; // Canceling the event to prevent submenu1 from opening on click
+// };
+
+
+
+				ToolStripMenuItem mainToolStripMenuItem = new ToolStripMenuItem();
+				mainToolStripMenuItem.Text = "main";
+				mainToolStripMenuItem.Click += ClickMenu;
+				mainToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] {submenu1, submenu2});
+				menu.Items.AddRange(new ToolStripItem[] {mainToolStripMenuItem});
+
+				// mainToolStripMenuItem.MouseEnter += (sender, e) =>
+				// {
+				// 	mainToolStripMenuItem.ShowDropDown();
+				// };
+				mainToolStripMenuItem.MouseLeave += (sender, e) =>
+				{
+					mainToolStripMenuItem.HideDropDown();
+				};
+
+				// menu.Items[menu.Items.Count - 1].DropDownItems.Add(submenu1);
+				// menu.Items[menu.Items.Count - 1].DropDownItems.Add(submenu2);
 			}
 
 			//if the menu will show on the screen, show it. otherwise, show it above the mouse
@@ -126,6 +159,53 @@ public static class DisplayFusionFunction
 			Application.DoEvents();
 		}
 	}
+
+	private static void Click1(object sender, EventArgs e)
+	{
+		// Obsługa kliknięcia w kolumnę 1
+		MessageBox.Show("Click  1");
+	}
+
+	private static void Click2(object sender, EventArgs e)
+	{
+		// Obsługa kliknięcia w kolumnę 1
+		MessageBox.Show("Click  2");
+	}
+
+	private static void ClickMenu(object sender, EventArgs e)
+	{
+		// Obsługa kliknięcia w kolumnę 1
+		(sender as ToolStripMenuItem).HideDropDown();
+		// mainToolStripMenuItem.HideDropDown();
+		MessageBox.Show("Click Menu");
+	}
+
+	// private static void contextMenuStrip1_Opening(object sender, EventArgs e)
+	// {
+	// 	// Wyczyść istniejące elementy menu
+	// 	contextMenuStrip1.Items.Clear();
+
+	// 	// Dodaj główne elementy menu
+	// 	ToolStripMenuItem menuItem1 = new ToolStripMenuItem("Plik");
+	// 	ToolStripMenuItem menuItem2 = new ToolStripMenuItem("Edycja");
+
+	// 	// Dodaj podmenu dla elementu "Plik"
+	// 	ToolStripMenuItem submenu1 = new ToolStripMenuItem("Nowy");
+	// 	ToolStripMenuItem submenu2 = new ToolStripMenuItem("Otwórz");
+	// 	ToolStripMenuItem submenu3 = new ToolStripMenuItem("Zapisz");
+
+	// 	// Dodaj obsługę zdarzenia dla podmenu "Nowy"
+	// 	submenu1.Click += Submenu1_Click;
+
+	// 	// Dodaj podmenu do elementu "Plik"
+	// 	menuItem1.DropDownItems.Add(submenu1);
+	// 	menuItem1.DropDownItems.Add(submenu2);
+	// 	menuItem1.DropDownItems.Add(submenu3);
+
+	// 	// Dodaj główne elementy do ContextMenuStrip
+	// 	contextMenuStrip1.Items.Add(menuItem1);
+	// 	contextMenuStrip1.Items.Add(menuItem2);
+	// }
 	
 	//this function will get the text of the item and try to run it as a DisplayFusion function
 	//"--- Cancel ---", change it to what you used in MenuEntries-List
