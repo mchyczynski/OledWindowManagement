@@ -12,7 +12,7 @@ using System.Windows.Forms;
 // - Currently focused window if none of these match
 public static class DisplayFusionFunction
 {
-	public static int shiftRange = 160;
+	public static int shiftRange = 32;
 	public static bool enableSizeVariance = false;
 	public static bool enablePositionVariance = true;
 	public static bool enableWholeSpaceShift = true;
@@ -41,6 +41,11 @@ public static class DisplayFusionFunction
 	public static int verticalRightSplit = 0;
 	
 	public static DateTime lastBordersRecalc = DateTime.MinValue;
+
+	public static string KEY_SHIFT = "16";
+	public static string KEY_CTRL = "17";
+	public static string KEY_A = "65";
+	public static string KEY_Q = "81";
 	
 	public static void Run(IntPtr windowHandle)
 	{
@@ -62,10 +67,10 @@ public static class DisplayFusionFunction
 				{{ "Khaki", "Black", "Left" }},
 				{{ "Khaki", "Black", "Right" }},
 				
-				{{ "PaleGreen", "Black", "TopLeft" }},
-				{{ "PaleGreen", "Black", "TopRight" }},
-				{{ "PaleGreen", "Black", "BottomLeft" }},
-				{{ "PaleGreen", "Black", "BottomRight" }},
+				// {{ "PaleGreen", "Black", "TopLeft" }},
+				// {{ "PaleGreen", "Black", "TopRight" }},
+				// {{ "PaleGreen", "Black", "BottomLeft" }},
+				// {{ "PaleGreen", "Black", "BottomRight" }},
 				
 				// {{ "DodgerBlue", "Black", "TopLeftmost" }},
 				// {{ "DodgerBlue", "Black", "TopMiddle" }},
@@ -372,166 +377,119 @@ public static class DisplayFusionFunction
 	public static void Left(IntPtr windowHandle)
 	{
 		generateSplitBorders(windowHandle);
-		//Rectangle monitorRect = getCurrentMonitorBounds();
-		
-		int width = verticalMiddleSplit - leftMargin;
-		int height = bottomMargin - topMargin;
-		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
-		
-		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
-				// "\nwidth " + width + "\theight " + height );
+
+		if (BFS.Input.IsKeyDown(KEY_SHIFT))
+        {
+			TopLeft(windowHandle);
+        }
+		else if (BFS.Input.IsKeyDown(KEY_CTRL))
+		{
+			BottomLeft(windowHandle);
+		}
+		else // whole space horizontally when no key pressed
+		{
+			int width = verticalMiddleSplit - leftMargin;
+			int height = bottomMargin - topMargin;
+			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+		}
 	}
 	
 	public static void Right(IntPtr windowHandle)
 	{
 		generateSplitBorders(windowHandle);
-		//Rectangle monitorRect = getCurrentMonitorBounds();
-		
-		int width = rightMargin - verticalMiddleSplit;
-		int height = bottomMargin - topMargin;
-		BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
-		
-		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
-				// "\nwidth " + width + "\theight " + height );
+
+		if (BFS.Input.IsKeyDown(KEY_SHIFT))
+        {
+			TopRight(windowHandle);
+        }
+		else if (BFS.Input.IsKeyDown(KEY_CTRL))
+		{
+			BottomRight(windowHandle);
+		}
+		else // whole space horizontally when no key pressed
+		{
+			int width = rightMargin - verticalMiddleSplit;
+			int height = bottomMargin - topMargin;
+			BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
+		}
 	}
 			
 	public static void TopLeft(IntPtr windowHandle)
 	{
-		generateSplitBorders(windowHandle);
-		//Rectangle monitorRect = getCurrentMonitorBounds();
-		
 		int width = verticalMiddleSplit - leftMargin;
 		int height = horizontalMiddleSplit - topMargin;
 		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
-		
-		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
-				// "\nwidth " + width + "\theight " + height );
 	}
 					
 	public static void TopRight(IntPtr windowHandle)
 	{
-		generateSplitBorders(windowHandle);
-		//Rectangle monitorRect = getCurrentMonitorBounds();
-		
 		int width = rightMargin - verticalMiddleSplit;
 		int height = horizontalMiddleSplit - topMargin;
 		BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
-		
-		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
-				// "\nwidth " + width + "\theight " + height );
 	}
 				
 	public static void BottomLeft(IntPtr windowHandle)
 	{
-		generateSplitBorders(windowHandle);
-		//Rectangle monitorRect = getCurrentMonitorBounds();
-		
 		int width = verticalMiddleSplit - leftMargin;
 		int height = bottomMargin - horizontalMiddleSplit;
 		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
-		
-		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
-				// "\nwidth " + width + "\theight " + height );
 	}
 					
 	public static void BottomRight(IntPtr windowHandle)
 	{
-		generateSplitBorders(windowHandle);
-		//Rectangle monitorRect = getCurrentMonitorBounds();
-		
 		int width = rightMargin - verticalMiddleSplit;
 		int height = bottomMargin - horizontalMiddleSplit;
 		BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, horizontalMiddleSplit, width, height);
-		
-		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
-				// "\nwidth " + width + "\theight " + height );
 	}
 	
 	public static void TopLeftmost(IntPtr windowHandle)
 	{
-		generateSplitBorders(windowHandle);
-		//Rectangle monitorRect = getCurrentMonitorBounds();
-		
 		int width = verticalLeftSplit - leftMargin;
 		int height = horizontalMiddleSplit - topMargin;
 		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
-		
-		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
-				// "\nwidth " + width + "\theight " + height );	
 	}
 	
 	public static void TopMiddle(IntPtr windowHandle)
 	{
-		generateSplitBorders(windowHandle);
-		//Rectangle monitorRect = getCurrentMonitorBounds();
-		
 		int width = verticalRightSplit - verticalLeftSplit;
 		int height = horizontalMiddleSplit - topMargin;
 		BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, topMargin, width, height);
-		
-		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
-				// "\nwidth " + width + "\theight " + height );	
 	}	
 		
 	public static void TopRightmost(IntPtr windowHandle)
 	{
-		generateSplitBorders(windowHandle);
-		//Rectangle monitorRect = getCurrentMonitorBounds();
-		
 		int width = rightMargin - verticalRightSplit;
 		int height = horizontalMiddleSplit - topMargin;
 		BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, topMargin, width, height);
-		
-		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
-				// "\nwidth " + width + "\theight " + height );	
 	}	
 	
 	public static void BottomLeftmost(IntPtr windowHandle)
 	{
-		generateSplitBorders(windowHandle);
-		//Rectangle monitorRect = getCurrentMonitorBounds();
-		
 		int width = verticalLeftSplit - leftMargin;
 		int height = bottomMargin - horizontalMiddleSplit;
 		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
-		
-		// MessageBox.Show("X " + leftMargin + "\tY " + BottomMargin +
-				// "\nwidth " + width + "\theight " + height );	
 	}
 	
 	public static void BottomMiddle(IntPtr windowHandle)
 	{
-		generateSplitBorders(windowHandle);
-		//Rectangle monitorRect = getCurrentMonitorBounds();
-		
 		int width = verticalRightSplit - verticalLeftSplit;
 		int height = bottomMargin - horizontalMiddleSplit;
 		BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, horizontalMiddleSplit, width, height);
-		
-		// MessageBox.Show("X " + leftMargin + "\tY " + BottomMargin +
-				// "\nwidth " + width + "\theight " + height );	
 	}	
 		
 	public static void BottomRightmost(IntPtr windowHandle)
 	{
-		generateSplitBorders(windowHandle);
-		//Rectangle monitorRect = getCurrentMonitorBounds();
-		
 		int width = rightMargin - verticalRightSplit;
 		int height = bottomMargin - horizontalMiddleSplit;
 		BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, horizontalMiddleSplit, width, height);
-		
-		// MessageBox.Show("X " + leftMargin + "\tY " + BottomMargin +
-				// "\nwidth " + width + "\theight " + height );	
 	}
 	
-	public static string KEY_SHIFT = "16";
-	public static string KEY_CTRL = "17";
-	public static string KEY_A = "65";
-	public static string KEY_Q = "81";
+
 	
 	public static void SixSplitLeft(IntPtr windowHandle)
 	{
+		generateSplitBorders(windowHandle);
+
 		if (BFS.Input.IsKeyDown(KEY_SHIFT))
         {
 			TopLeftmost(windowHandle);
@@ -544,6 +502,8 @@ public static class DisplayFusionFunction
 	
 	public static void SixSplitMiddle(IntPtr windowHandle)
 	{
+		generateSplitBorders(windowHandle);
+
 		if (BFS.Input.IsKeyDown(KEY_SHIFT))
         {
 			TopMiddle(windowHandle);
@@ -556,6 +516,8 @@ public static class DisplayFusionFunction
 
 	public static void SixSplitRight(IntPtr windowHandle)
 	{
+		generateSplitBorders(windowHandle);
+
 		if (BFS.Input.IsKeyDown(KEY_SHIFT))
         {
 			TopRightmost(windowHandle);
