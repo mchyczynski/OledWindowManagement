@@ -21,7 +21,9 @@ public static class DisplayFusionFunction
 	public static string bottomMarginKey = "bottomMarginKey";
 	public static string leftMarginKey = "leftMarginKey";
 	public static string rightMarginKey = "rightMarginKey";
-	public static string horizontalSplitKey = "horizontalSplitKey";
+	public static string horizontalTopSplitKey = "horizontalTopSplitKey";
+	public static string horizontalMiddleSplitKey = "horizontalMiddleSplitKey";
+	public static string horizontalBottomSplitKey = "horizontalBottomSplitKey";
 	public static string verticalMiddleSplitKey = "verticalMiddleSplitKey";
 	public static string verticalLeftSplitKey = "verticalLeftSplitKey";
 	public static string verticalRightSplitKey = "verticalRightSplitKey";
@@ -30,9 +32,11 @@ public static class DisplayFusionFunction
 	public static int bottomMargin = 0;
 	public static int leftMargin = 0;
 	public static int rightMargin = 0;
-	public static int horizontalSplit = 0;
-	public static int verticalMiddleSplit = 0;
+	public static int horizontalTopSplit = 0;
+	public static int horizontalMiddleSplit = 0;
+	public static int horizontalBottomSplit = 0;
 	public static int verticalLeftSplit = 0;
+	public static int verticalMiddleSplit = 0;
 	public static int verticalRightSplit = 0;
 	
 	public static DateTime lastBordersRecalc = DateTime.MinValue;
@@ -252,10 +256,12 @@ public static class DisplayFusionFunction
 	}
 
 	// topMarginKey, bottomMarginKey, leftMarginKey, rightMarginKey - outer borders
-	// horizontalSplitKey - only one horizontal split
-	// verticalMiddleKey - right in the middle of screen for Left / Right split or 4 corners split
-	// verticalLeftKey - left border when doing 1-1-1, 1-2 splits 
-	// verticalRightKey - right border when doing 1-1-1 and 2-1 splits
+	// horizontalTopSplitKey - upper horizontal split for e.g bottom border on topmost window in 3 window horizontal split
+	// horizontalMiddleSplitKey - horizontal split in the middle for e.g one top window and one bottom window
+	// horizontalBottomSplitKey - lower horizontal split for e.g top border on bottommost window in 3 window horizontal split
+	// verticalMiddleSplitKey - right in the middle of screen for Left / Right split or 4 corners split
+	// verticalLeftSplitKey - left border when doing 1-1-1, 1-2 splits 
+	// verticalRightSplitKey - right border when doing 1-1-1 and 2-1 splits
 	public static void generateSplitBorders(IntPtr windowHandle)
 	{
 		// todo add monitor id to keys?
@@ -293,21 +299,29 @@ public static class DisplayFusionFunction
 		}
 		else rightMargin = readIntKey(rightMarginKey);
 		
-		// horizontalSplitKey
-		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(horizontalSplitKey))
+		// horizontalTopSplitKey
+		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(horizontalTopSplitKey))
 		{
-			horizontalSplit = monitorRect.Y + monitorRect.Height / 2 + GetRandomShift(shiftRange);
-			BFS.ScriptSettings.WriteValue(horizontalSplitKey, horizontalSplit.ToString());
+			horizontalTopSplit = monitorRect.Y + monitorRect.Height / 3 + GetRandomShift(shiftRange);
+			BFS.ScriptSettings.WriteValue(horizontalTopSplitKey, horizontalTopSplit.ToString());
 		}
-		else horizontalSplit = readIntKey(horizontalSplitKey);
-
-		// verticalMiddleSplitKey
-		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(verticalMiddleSplitKey))
+		else horizontalTopSplit = readIntKey(horizontalTopSplitKey);
+		
+		// horizontalMiddleSplitKey
+		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(horizontalMiddleSplitKey))
 		{
-			verticalMiddleSplit = monitorRect.X + monitorRect.Width / 2 + GetRandomShift(shiftRange);
-			BFS.ScriptSettings.WriteValue(verticalMiddleSplitKey, verticalMiddleSplit.ToString());
+			horizontalMiddleSplit = monitorRect.Y + monitorRect.Height / 2 + GetRandomShift(shiftRange);
+			BFS.ScriptSettings.WriteValue(horizontalMiddleSplitKey, horizontalMiddleSplit.ToString());
 		}
-		else verticalMiddleSplit = readIntKey(verticalMiddleSplitKey);
+		else horizontalMiddleSplit = readIntKey(horizontalMiddleSplitKey);
+		
+		// horizontalBottomSplitKey
+		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(horizontalBottomSplitKey))
+		{
+			horizontalBottomSplit = monitorRect.Y + monitorRect.Height * 2 / 3 + GetRandomShift(shiftRange);
+			BFS.ScriptSettings.WriteValue(horizontalBottomSplitKey, horizontalBottomSplit.ToString());
+		}
+		else horizontalBottomSplit = readIntKey(horizontalBottomSplitKey);
 
 		// verticalLeftSplitKey
 		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(verticalLeftSplitKey))
@@ -316,6 +330,14 @@ public static class DisplayFusionFunction
 			BFS.ScriptSettings.WriteValue(verticalLeftSplitKey, verticalLeftSplit.ToString());
 		}		
 		else verticalLeftSplit = readIntKey(verticalLeftSplitKey);
+
+		// verticalMiddleSplitKey
+		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(verticalMiddleSplitKey))
+		{
+			verticalMiddleSplit = monitorRect.X + monitorRect.Width / 2 + GetRandomShift(shiftRange);
+			BFS.ScriptSettings.WriteValue(verticalMiddleSplitKey, verticalMiddleSplit.ToString());
+		}
+		else verticalMiddleSplit = readIntKey(verticalMiddleSplitKey);
 
 		// verticaRightSplitKey
 		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(verticalRightSplitKey))
@@ -331,8 +353,8 @@ public static class DisplayFusionFunction
 		// display values for debug
 		// MessageBox.Show("topMargin " + topMargin + "\tbottomMargin " + bottomMargin +
 		                // "\nleftMargin " + leftMargin + "\trightMargin " + rightMargin + 
-		                // "\nhorizontalSplit " + horizontalSplit + "\tverticalMiddleSplit " + verticalMiddleSplit +
-		                // "\nverticalLeftSplit " + verticalLeftSplit + "\tverticaRightKey " + verticalRightSplit, "Info", MessageBoxButtons.OK);
+		                // "\nhorTopSplit " + horizontalTopSplit + "\thorMiddleSplit " + horizontalMiddleSplit +"\thorBottomKey " + horizontalBottomSplit +
+		                // "\nverLeftSplit " + verticalLeftSplit + "\tverMiddleSplit " + verticalMiddleSplit +"\tverRightKey " + verticalRightSplit);
 	}
 	
 	public static void Left(IntPtr windowHandle)
@@ -367,7 +389,7 @@ public static class DisplayFusionFunction
 		//Rectangle monitorRect = getCurrentMonitorBounds();
 		
 		int width = verticalMiddleSplit - leftMargin;
-		int height = horizontalSplit - topMargin;
+		int height = horizontalMiddleSplit - topMargin;
 		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
 		
 		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
@@ -380,7 +402,7 @@ public static class DisplayFusionFunction
 		//Rectangle monitorRect = getCurrentMonitorBounds();
 		
 		int width = rightMargin - verticalMiddleSplit;
-		int height = horizontalSplit - topMargin;
+		int height = horizontalMiddleSplit - topMargin;
 		BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
 		
 		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
@@ -393,8 +415,8 @@ public static class DisplayFusionFunction
 		//Rectangle monitorRect = getCurrentMonitorBounds();
 		
 		int width = verticalMiddleSplit - leftMargin;
-		int height = bottomMargin - horizontalSplit;
-		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalSplit, width, height);
+		int height = bottomMargin - horizontalMiddleSplit;
+		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
 		
 		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
 				// "\nwidth " + width + "\theight " + height );
@@ -406,8 +428,8 @@ public static class DisplayFusionFunction
 		//Rectangle monitorRect = getCurrentMonitorBounds();
 		
 		int width = rightMargin - verticalMiddleSplit;
-		int height = bottomMargin - horizontalSplit;
-		BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, horizontalSplit, width, height);
+		int height = bottomMargin - horizontalMiddleSplit;
+		BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, horizontalMiddleSplit, width, height);
 		
 		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
 				// "\nwidth " + width + "\theight " + height );
