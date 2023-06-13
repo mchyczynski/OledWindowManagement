@@ -170,7 +170,7 @@ public static class DisplayFusionFunction
 
 		// get the position of the window in the monitor, and the current monitor
 		Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
-		Rectangle monitorRect = BFS.Monitor.GetMonitorWorkAreaByWindow(windowHandle);
+		Rectangle monitorRect = getCurrentMonitorBounds();
 
 		double factorComplement = 1 - factor;
 		
@@ -184,8 +184,8 @@ public static class DisplayFusionFunction
 		
 		// calculate window position variance
 		int randomShiftX = 0, randomShiftY = 0;
-		int iFinalWinX = (monitorRect.Width - iFinalWinW) / 2;
-		int iFinalWinY = (monitorRect.Height - iFinalWinH) / 2;
+		int iFinalWinX = monitorRect.X + (monitorRect.Width - iFinalWinW) / 2;
+		int iFinalWinY = monitorRect.Y + (monitorRect.Height - iFinalWinH) / 2;
 		
 		if (enablePositionVariance)
 		{
@@ -198,8 +198,8 @@ public static class DisplayFusionFunction
 				// override final position as generateed random shift within free space
 				randomShiftX = GetRandomShift(0, freeSpaceW);
 				randomShiftY = GetRandomShift(0, freeSpaceH);
-				iFinalWinX = randomShiftX;
-				iFinalWinY = randomShiftY;
+				iFinalWinX = monitorRect.X + randomShiftX;
+				iFinalWinY = monitorRect.Y + randomShiftY;
 			}
 			else // generate const value random shift 
 			{
@@ -218,11 +218,11 @@ public static class DisplayFusionFunction
 			if ( iFinalWinW > monitorRect.Width) iFinalWinW = monitorRect.Width; // check window too wide
 			if ( iFinalWinH > monitorRect.Height) iFinalWinH = monitorRect.Height; // check window too high
 			
-			if (iFinalWinX < 0) iFinalWinX = 0; // check window out of bound left
-			if (iFinalWinY < 0) iFinalWinY = 0; // check window out of bound top
+			if (iFinalWinX < monitorRect.X) iFinalWinX = monitorRect.X; // check window out of bound left
+			if (iFinalWinY < monitorRect.Y) iFinalWinY = monitorRect.Y; // check window out of bound top
 
-			if (( iFinalWinX + iFinalWinW) > monitorRect.Width ) iFinalWinX = monitorRect.Width - iFinalWinW; // check window out of bound right
-			if (( iFinalWinY + iFinalWinH) > monitorRect.Height ) iFinalWinY = monitorRect.Height - iFinalWinH; // check window out of bound bottom
+			if (( iFinalWinX + iFinalWinW - monitorRect.X) > monitorRect.Width ) iFinalWinX = monitorRect.X + monitorRect.Width - iFinalWinW; // check window out of bound right
+			if (( iFinalWinY + iFinalWinH - monitorRect.Y) > monitorRect.Height ) iFinalWinY = monitorRect.Y + monitorRect.Height - iFinalWinH; // check window out of bound bottom
 		}
 		
 		// move and resize window
@@ -232,7 +232,8 @@ public static class DisplayFusionFunction
 		// MessageBox.Show("iFinalWinX " +iFinalWinX+ "\tiFinalWinY " + iFinalWinY+
 		                // "\niFinalWinW " +iFinalWinW+ "\tiFinalWinH " +iFinalWinH+ 
 		                // "\nrandomShiftW " +randomShiftW+ "\trandomShiftH " + randomShiftH+
-		                // "\nrandomShiftX " +randomShiftX+ "\trandomShiftY " +randomShiftY, "Info", MessageBoxButtons.OK);
+		                // "\nrandomShiftX " +randomShiftX+ "\trandomShiftY " +randomShiftY +
+						// "\nmonitorRect.X " + monitorRect.X + "\tmonitorRect.Y " + monitorRect.Y);
 	}
 		
 
@@ -244,7 +245,7 @@ public static class DisplayFusionFunction
 	// returns width, height, shiftW, shiftH
 	public static (int, int, int, int) CalculateFinalWindowSize(IntPtr windowHandle, double zoneFill, double horizontalFactor, double verticalFactor)
 	{
-		Rectangle monitorRect = BFS.Monitor.GetMonitorWorkAreaByWindow(windowHandle);
+		Rectangle monitorRect = getCurrentMonitorBounds();
 		
 		// calculate bae width and height
 		int width = Convert.ToInt32(monitorRect.Width * zoneFill * horizontalFactor);
@@ -296,12 +297,12 @@ public static class DisplayFusionFunction
 	// verticalRightKey - right border when doing 1-1-1 and 2-1 splits
 	public static void generateSplitBorders(IntPtr windowHandle)
 	{
-		Rectangle monitorRect = BFS.Monitor.GetMonitorWorkAreaByWindow(windowHandle);
+		Rectangle monitorRect = getCurrentMonitorBounds();
 		
 		// topMarginKey
 		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(topMarginKey))
 		{
-			topMargin = 0 + GetRandomShift(0, shiftRange);
+			topMargin = monitorRect.Y + GetRandomShift(0, shiftRange);
 			BFS.ScriptSettings.WriteValue(topMarginKey, topMargin.ToString());
 		}
 		else topMargin = readIntKey(topMarginKey);
@@ -309,7 +310,7 @@ public static class DisplayFusionFunction
 		// bottomMarginKey
 		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(bottomMarginKey))
 		{
-			bottomMargin = monitorRect.Height - GetRandomShift(0, shiftRange);
+			bottomMargin = monitorRect.Y + monitorRect.Height - GetRandomShift(0, shiftRange);
 			BFS.ScriptSettings.WriteValue(bottomMarginKey, bottomMargin.ToString());
 		}
 		else bottomMargin = readIntKey(bottomMarginKey);
@@ -317,7 +318,7 @@ public static class DisplayFusionFunction
 		// leftMarginKey
 		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(leftMarginKey))
 		{
-			leftMargin = 0 + GetRandomShift(0, shiftRange);
+			leftMargin = monitorRect.X + GetRandomShift(0, shiftRange);
 			BFS.ScriptSettings.WriteValue(leftMarginKey, leftMargin.ToString());
 		}
 		else leftMargin = readIntKey(leftMarginKey);
@@ -325,7 +326,7 @@ public static class DisplayFusionFunction
 		// rightMarginKey
 		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(rightMarginKey))
 		{
-			rightMargin = monitorRect.Width - GetRandomShift(0, shiftRange);
+			rightMargin = monitorRect.X + monitorRect.Width - GetRandomShift(0, shiftRange);
 			BFS.ScriptSettings.WriteValue(rightMarginKey, rightMargin.ToString());
 		}
 		else rightMargin = readIntKey(rightMarginKey);
@@ -333,7 +334,7 @@ public static class DisplayFusionFunction
 		// horizontalSplitKey
 		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(horizontalSplitKey))
 		{
-			horizontalSplit = monitorRect.Height / 2 + GetRandomShift(shiftRange);
+			horizontalSplit = monitorRect.Y + monitorRect.Height / 2 + GetRandomShift(shiftRange);
 			BFS.ScriptSettings.WriteValue(horizontalSplitKey, horizontalSplit.ToString());
 		}
 		else horizontalSplit = readIntKey(horizontalSplitKey);
@@ -341,7 +342,7 @@ public static class DisplayFusionFunction
 		// verticalMiddleSplitKey
 		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(verticalMiddleSplitKey))
 		{
-			verticalMiddleSplit = monitorRect.Width / 2 + GetRandomShift(shiftRange);
+			verticalMiddleSplit = monitorRect.X + monitorRect.Width / 2 + GetRandomShift(shiftRange);
 			BFS.ScriptSettings.WriteValue(verticalMiddleSplitKey, verticalMiddleSplit.ToString());
 		}
 		else verticalMiddleSplit = readIntKey(verticalMiddleSplitKey);
@@ -349,7 +350,7 @@ public static class DisplayFusionFunction
 		// verticalLeftSplitKey
 		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(verticalLeftSplitKey))
 		{
-			verticalLeftSplit = monitorRect.Width / 3 + GetRandomShift(shiftRange);
+			verticalLeftSplit = monitorRect.X + monitorRect.Width / 3 + GetRandomShift(shiftRange);
 			BFS.ScriptSettings.WriteValue(verticalLeftSplitKey, verticalLeftSplit.ToString());
 		}		
 		else verticalLeftSplit = readIntKey(verticalLeftSplitKey);
@@ -357,7 +358,7 @@ public static class DisplayFusionFunction
 		// verticaRightSplitKey
 		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(verticalRightSplitKey))
 		{
-			verticalRightSplit = monitorRect.Width * 2 / 3 + GetRandomShift(shiftRange);
+			verticalRightSplit = monitorRect.X + monitorRect.Width * 2 / 3 + GetRandomShift(shiftRange);
 			BFS.ScriptSettings.WriteValue(verticalRightSplitKey, verticalRightSplit.ToString());
 		}
 		else verticalRightSplit = readIntKey(verticalRightSplitKey);
@@ -375,7 +376,7 @@ public static class DisplayFusionFunction
 	public static void Left(IntPtr windowHandle)
 	{
 		generateSplitBorders(windowHandle);
-		//Rectangle monitorRect = BFS.Monitor.GetMonitorWorkAreaByWindow(windowHandle);
+		//Rectangle monitorRect = getCurrentMonitorBounds();
 		
 		int width = verticalMiddleSplit - leftMargin;
 		int height = bottomMargin - topMargin;
@@ -388,7 +389,7 @@ public static class DisplayFusionFunction
 	public static void Right(IntPtr windowHandle)
 	{
 		generateSplitBorders(windowHandle);
-		//Rectangle monitorRect = BFS.Monitor.GetMonitorWorkAreaByWindow(windowHandle);
+		//Rectangle monitorRect = getCurrentMonitorBounds();
 		
 		int width = rightMargin - verticalMiddleSplit;
 		int height = bottomMargin - topMargin;
@@ -424,5 +425,28 @@ public static class DisplayFusionFunction
 			return false;
 		}
 
+	}
+	
+	public static Rectangle getCurrentMonitorBounds()
+	{
+		// Get the mouse position
+		Point mousePosition = new Point(BFS.Input.GetMousePositionX(), BFS.Input.GetMousePositionY());
+		
+		// Get an array of the bounds for all monitors ignoring splits
+        Rectangle[] monitorBoundsAll = BFS.Monitor.GetMonitorBoundsNoSplits();
+		
+		// Loop through the array of bounds and move the window to the centre of whichever one the mouse cursor is on
+		foreach (Rectangle monitorBounds in monitorBoundsAll)
+		{
+            if (monitorBounds.Contains(mousePosition))
+            {
+				// string pointAsString = string.Format("X={0},Y={1}", mousePosition.X, mousePosition.Y);
+				// MessageBox.Show("mousePosition " + pointAsString +
+				// "\nmonitorBounds.Width " + monitorBounds.Width + "\tmonitorBounds.Height " +monitorBounds.Height + 
+				// "\nmonitorBounds.X " + monitorBounds.X + "\tmonitorBounds.Y " + monitorBounds.Y);
+                return monitorBounds;
+            }
+		}
+		return default; 
 	}
 }
