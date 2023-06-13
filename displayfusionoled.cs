@@ -2,7 +2,6 @@ using System;
 using System.Reflection;
 using System.Drawing;
 using System.Windows.Forms;
-using System.Windows.Input;
 
 // The 'windowHandle' parameter will contain the window handle for the:
 // - Active window when run by hotkey
@@ -76,7 +75,7 @@ public static class DisplayFusionFunction
 				
 				{{ "DodgerBlue", "Black", "SixSplitLeft" }},
 				{{ "DodgerBlue", "Black", "SixSplitMiddle" }},
-				{{ "DodgerBlue", "Black", "SixSplitright" }},
+				{{ "DodgerBlue", "Black", "SixSplitRight" }},
 				
 				// {{ "Goldenrod", "Black", "Nine" }},
 				// {{ "Goldenrod", "Black", "" }},
@@ -525,41 +524,41 @@ public static class DisplayFusionFunction
 				// "\nwidth " + width + "\theight " + height );	
 	}
 	
-	// public static void SixSplitLeft(IntPtr windowHandle)
-	// {
-		// if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
-        // {
-			// TopLeftmost(windowHandle);
-        // }
-		// else
-		// {
-			// BottomLeftmost(windowHandle);
-		// }
-	// }
+	public static void SixSplitLeft(IntPtr windowHandle)
+	{
+		if (BFS.Input.IsKeyDown("16"))
+        {
+			TopLeftmost(windowHandle);
+        }
+		else
+		{
+			BottomLeftmost(windowHandle);
+		}
+	}
 	
-	// public static void SixSplitMiddle(IntPtr windowHandle)
-	// {
-		// if (Keyboard.IsKeyDown(Key.MiddleShift) || Keyboard.IsKeyDown(Key.RightShift))
-        // {
-			// TopMiddle(windowHandle);
-        // }
-		// else
-		// {
-			// BottomMiddle(windowHandle);
-		// }
-	// }
+	public static void SixSplitMiddle(IntPtr windowHandle)
+	{
+		if (BFS.Input.IsKeyDown("16"))
+        {
+			TopMiddle(windowHandle);
+        }
+		else
+		{
+			BottomMiddle(windowHandle);
+		}
+	}
 
-	// public static void SixSplitRight(IntPtr windowHandle)
-	// {
-		// if (Keyboard.IsKeyDown(Key.RightShift) || Keyboard.IsKeyDown(Key.RightShift))
-        // {
-			// TopRightmost(windowHandle);
-        // }
-		// else
-		// {
-			// BottomRightmost(windowHandle);
-		// }
-	// }
+	public static void SixSplitRight(IntPtr windowHandle)
+	{
+		if (BFS.Input.IsKeyDown("16"))
+        {
+			TopRightmost(windowHandle);
+        }
+		else
+		{
+			BottomRightmost(windowHandle);
+		}
+	}
 	
 	public static bool keyAlreadyGenerated(string key)
 	{
@@ -576,17 +575,7 @@ public static class DisplayFusionFunction
 		DateTime currentTime = DateTime.Now; // Pobranie aktualnego czasu
 		TimeSpan elapsedTime = currentTime - lastBordersRecalc; // Obliczenie czasu, który minął
 
-		if (elapsedTime.TotalSeconds >= 15)
-		{
-			// Triger borders change
-			return true;
-		}
-		else
-		{
-			// too soon to borders change
-			return false;
-		}
-
+		return (elapsedTime.TotalSeconds >= 15);
 	}
 	
 	public static Rectangle getCurrentMonitorBounds()
