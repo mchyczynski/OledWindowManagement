@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using System.Reflection;
 using System.Drawing;
 using System.Windows.Forms;
@@ -77,15 +78,15 @@ public static class DisplayFusionFunction
 				{{ "DodgerBlue", "Black", "SixSplitMiddle" }},
 				{{ "DodgerBlue", "Black", "SixSplitRight" }},
 				
-				// {{ "Goldenrod", "Black", "Nine" }},
-				// {{ "Goldenrod", "Black", "" }},
-				// {{ "Goldenrod", "Black", "" }},
-				// {{ "Goldenrod", "Black", "" }},
-				// {{ "Goldenrod", "Black", "" }},
-				// {{ "Goldenrod", "Black", "" }},
-				// {{ "Goldenrod", "Black", "" }},
-				// {{ "Goldenrod", "Black", "" }},
-				// {{ "Goldenrod", "Black", "" }},
+				{{ "DarkViolet", "Black", "NineSplit" }},
+				// {{ "DarkViolet", "Black", "" }},
+				// {{ "DarkViolet", "Black", "" }},
+				// {{ "DarkViolet", "Black", "" }},
+				// {{ "DarkViolet", "Black", "" }},
+				// {{ "DarkViolet", "Black", "" }},
+				// {{ "DarkViolet", "Black", "" }},
+				// {{ "DarkViolet", "Black", "" }},
+				// {{ "DarkViolet", "Black", "" }},
 				
 				{{ "Pink", "Maroon", "--- Cancel ---" }}
 			};
@@ -524,9 +525,14 @@ public static class DisplayFusionFunction
 				// "\nwidth " + width + "\theight " + height );	
 	}
 	
+	public static string KEY_SHIFT = "16";
+	public static string KEY_CTRL = "17";
+	public static string KEY_A = "65";
+	public static string KEY_Q = "81";
+	
 	public static void SixSplitLeft(IntPtr windowHandle)
 	{
-		if (BFS.Input.IsKeyDown("16"))
+		if (BFS.Input.IsKeyDown(KEY_SHIFT))
         {
 			TopLeftmost(windowHandle);
         }
@@ -538,7 +544,7 @@ public static class DisplayFusionFunction
 	
 	public static void SixSplitMiddle(IntPtr windowHandle)
 	{
-		if (BFS.Input.IsKeyDown("16"))
+		if (BFS.Input.IsKeyDown(KEY_SHIFT))
         {
 			TopMiddle(windowHandle);
         }
@@ -550,13 +556,25 @@ public static class DisplayFusionFunction
 
 	public static void SixSplitRight(IntPtr windowHandle)
 	{
-		if (BFS.Input.IsKeyDown("16"))
+		if (BFS.Input.IsKeyDown(KEY_SHIFT))
         {
 			TopRightmost(windowHandle);
         }
 		else
 		{
 			BottomRightmost(windowHandle);
+		}
+	}
+	
+	public static void NineSplit(IntPtr windowHandle)
+	{
+		if(BFS.Input.IsKeyDown(MergeKeyCodes(KEY_A, KEY_Q)))
+		{
+			generateSplitBorders(windowHandle);
+		
+			int width = verticalLeftSplit - leftMargin;
+			int height = horizontalBottomSplit - topMargin;
+			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
 		}
 	}
 	
@@ -600,4 +618,21 @@ public static class DisplayFusionFunction
 		}
 		return default; 
 	}
+	
+	public static string MergeKeyCodes(params string[] keyCodes)
+    {
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < keyCodes.Length; i++)
+        {
+            sb.Append(keyCodes[i]);
+
+            if (i < keyCodes.Length - 1)
+            {
+                sb.Append(";");
+            }
+        }
+
+        return sb.ToString();
+    }
 }
