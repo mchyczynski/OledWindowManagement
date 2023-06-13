@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Windows.Input;
 
 // The 'windowHandle' parameter will contain the window handle for the:
 // - Active window when run by hotkey
@@ -52,16 +53,6 @@ public static class DisplayFusionFunction
 			{
 				//	{{ "Background-Color", "Foreground-Color", "Function-Name" }}
 				
-				//{{ "Khaki", "Black", "Move Window to Next Monitor" }},
-				//{{ "Khaki", "Black", "Move Window to Previous Monitor" }},
-				//{{ "PaleGreen", "Black", "Size and Move Window to Left Side of Monitor" }},
-				//{{ "PaleGreen", "Black", "Size and Move Window to Right Side of Monitor" }},
-				//{{ "PaleGreen", "Black", "Size and Move Window to Top Side of Monitor" }},
-				//{{ "PaleGreen", "Black", "Size and Move Window to Bottom Side of Monitor" }},
-				//{{ "Aquamarine", "Black", "Move Window to Top-Left Corner and Size 50%" }},
-				//{{ "Aquamarine", "Black", "Move Window to Top-Right Corner and Size 50%" }},
-				//{{ "Aquamarine", "Black", "Move Window to Bottom-Left Corner and Size 50%" }},
-				//{{ "Aquamarine", "Black", "Move Window to Bottom-Right Corner and Size 50%" }},
 				{{ "Aquamarine", "Black", "SingleWindow100" }},
 				{{ "Aquamarine", "Black", "SingleWindow95" }},
 				{{ "Aquamarine", "Black", "SingleWindow90" }},
@@ -76,12 +67,26 @@ public static class DisplayFusionFunction
 				{{ "PaleGreen", "Black", "BottomLeft" }},
 				{{ "PaleGreen", "Black", "BottomRight" }},
 				
-				{{ "Aquamarine", "Black", "TopLeftmost" }},
-				{{ "Aquamarine", "Black", "TopMiddle" }},
-				{{ "Aquamarine", "Black", "TopRightmost" }},
-				{{ "Aquamarine", "Black", "BottomLeftmost" }},
-				{{ "Aquamarine", "Black", "BottomMiddle" }},
-				{{ "Aquamarine", "Black", "BottomRightmost" }},
+				// {{ "DodgerBlue", "Black", "TopLeftmost" }},
+				// {{ "DodgerBlue", "Black", "TopMiddle" }},
+				// {{ "DodgerBlue", "Black", "TopRightmost" }},
+				// {{ "DodgerBlue", "Black", "BottomLeftmost" }},
+				// {{ "DodgerBlue", "Black", "BottomMiddle" }},
+				// {{ "DodgerBlue", "Black", "BottomRightmost" }},
+				
+				{{ "DodgerBlue", "Black", "SixSplitLeft" }},
+				{{ "DodgerBlue", "Black", "SixSplitMiddle" }},
+				{{ "DodgerBlue", "Black", "SixSplitright" }},
+				
+				// {{ "Goldenrod", "Black", "Nine" }},
+				// {{ "Goldenrod", "Black", "" }},
+				// {{ "Goldenrod", "Black", "" }},
+				// {{ "Goldenrod", "Black", "" }},
+				// {{ "Goldenrod", "Black", "" }},
+				// {{ "Goldenrod", "Black", "" }},
+				// {{ "Goldenrod", "Black", "" }},
+				// {{ "Goldenrod", "Black", "" }},
+				// {{ "Goldenrod", "Black", "" }},
 				
 				{{ "Pink", "Maroon", "--- Cancel ---" }}
 			};
@@ -518,7 +523,43 @@ public static class DisplayFusionFunction
 		
 		// MessageBox.Show("X " + leftMargin + "\tY " + BottomMargin +
 				// "\nwidth " + width + "\theight " + height );	
-	}	
+	}
+	
+	// public static void SixSplitLeft(IntPtr windowHandle)
+	// {
+		// if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+        // {
+			// TopLeftmost(windowHandle);
+        // }
+		// else
+		// {
+			// BottomLeftmost(windowHandle);
+		// }
+	// }
+	
+	// public static void SixSplitMiddle(IntPtr windowHandle)
+	// {
+		// if (Keyboard.IsKeyDown(Key.MiddleShift) || Keyboard.IsKeyDown(Key.RightShift))
+        // {
+			// TopMiddle(windowHandle);
+        // }
+		// else
+		// {
+			// BottomMiddle(windowHandle);
+		// }
+	// }
+
+	// public static void SixSplitRight(IntPtr windowHandle)
+	// {
+		// if (Keyboard.IsKeyDown(Key.RightShift) || Keyboard.IsKeyDown(Key.RightShift))
+        // {
+			// TopRightmost(windowHandle);
+        // }
+		// else
+		// {
+			// BottomRightmost(windowHandle);
+		// }
+	// }
 	
 	public static bool keyAlreadyGenerated(string key)
 	{
