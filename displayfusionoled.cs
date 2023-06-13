@@ -76,6 +76,13 @@ public static class DisplayFusionFunction
 				{{ "PaleGreen", "Black", "BottomLeft" }},
 				{{ "PaleGreen", "Black", "BottomRight" }},
 				
+				{{ "Aquamarine", "Black", "TopLeftmost" }},
+				{{ "Aquamarine", "Black", "TopMiddle" }},
+				{{ "Aquamarine", "Black", "TopRightmost" }},
+				{{ "Aquamarine", "Black", "BottomLeftmost" }},
+				{{ "Aquamarine", "Black", "BottomMiddle" }},
+				{{ "Aquamarine", "Black", "BottomRightmost" }},
+				
 				{{ "Pink", "Maroon", "--- Cancel ---" }}
 			};
 
@@ -434,6 +441,85 @@ public static class DisplayFusionFunction
 		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
 				// "\nwidth " + width + "\theight " + height );
 	}
+	
+	public static void TopLeftmost(IntPtr windowHandle)
+	{
+		generateSplitBorders(windowHandle);
+		//Rectangle monitorRect = getCurrentMonitorBounds();
+		
+		int width = verticalLeftSplit - leftMargin;
+		int height = horizontalMiddleSplit - topMargin;
+		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+		
+		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
+				// "\nwidth " + width + "\theight " + height );	
+	}
+	
+	public static void TopMiddle(IntPtr windowHandle)
+	{
+		generateSplitBorders(windowHandle);
+		//Rectangle monitorRect = getCurrentMonitorBounds();
+		
+		int width = verticalRightSplit - verticalLeftSplit;
+		int height = horizontalMiddleSplit - topMargin;
+		BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, topMargin, width, height);
+		
+		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
+				// "\nwidth " + width + "\theight " + height );	
+	}	
+		
+	public static void TopRightmost(IntPtr windowHandle)
+	{
+		generateSplitBorders(windowHandle);
+		//Rectangle monitorRect = getCurrentMonitorBounds();
+		
+		int width = rightMargin - verticalRightSplit;
+		int height = horizontalMiddleSplit - topMargin;
+		BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, topMargin, width, height);
+		
+		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
+				// "\nwidth " + width + "\theight " + height );	
+	}	
+	
+	public static void BottomLeftmost(IntPtr windowHandle)
+	{
+		generateSplitBorders(windowHandle);
+		//Rectangle monitorRect = getCurrentMonitorBounds();
+		
+		int width = verticalLeftSplit - leftMargin;
+		int height = bottomMargin - horizontalMiddleSplit;
+		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
+		
+		// MessageBox.Show("X " + leftMargin + "\tY " + BottomMargin +
+				// "\nwidth " + width + "\theight " + height );	
+	}
+	
+	public static void BottomMiddle(IntPtr windowHandle)
+	{
+		generateSplitBorders(windowHandle);
+		//Rectangle monitorRect = getCurrentMonitorBounds();
+		
+		int width = verticalRightSplit - verticalLeftSplit;
+		int height = bottomMargin - horizontalMiddleSplit;
+		BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, horizontalMiddleSplit, width, height);
+		
+		// MessageBox.Show("X " + leftMargin + "\tY " + BottomMargin +
+				// "\nwidth " + width + "\theight " + height );	
+	}	
+		
+	public static void BottomRightmost(IntPtr windowHandle)
+	{
+		generateSplitBorders(windowHandle);
+		//Rectangle monitorRect = getCurrentMonitorBounds();
+		
+		int width = rightMargin - verticalRightSplit;
+		int height = bottomMargin - horizontalMiddleSplit;
+		BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, horizontalMiddleSplit, width, height);
+		
+		// MessageBox.Show("X " + leftMargin + "\tY " + BottomMargin +
+				// "\nwidth " + width + "\theight " + height );	
+	}	
+	
 	public static bool keyAlreadyGenerated(string key)
 	{
 		return !string.IsNullOrEmpty(BFS.ScriptSettings.ReadValue(key));
