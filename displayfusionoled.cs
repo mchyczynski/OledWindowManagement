@@ -47,7 +47,7 @@ public static class DisplayFusionFunction
 		string[, ,] MenuEntries = 
 			{
 				//	{{ "Background-Color", "Foreground-Color", "Function-Name" }}
-				{{ "Pink", "Maroon", "--- Cancel ---" }},
+				
 				//{{ "Khaki", "Black", "Move Window to Next Monitor" }},
 				//{{ "Khaki", "Black", "Move Window to Previous Monitor" }},
 				//{{ "PaleGreen", "Black", "Size and Move Window to Left Side of Monitor" }},
@@ -66,6 +66,11 @@ public static class DisplayFusionFunction
 				
 				{{ "Khaki", "Black", "Left" }},
 				{{ "Khaki", "Black", "Right" }},
+				
+				{{ "PaleGreen", "Black", "TopLeft" }},
+				{{ "PaleGreen", "Black", "TopRight" }},
+				{{ "PaleGreen", "Black", "BottomLeft" }},
+				{{ "PaleGreen", "Black", "BottomRight" }},
 				
 				{{ "Pink", "Maroon", "--- Cancel ---" }}
 			};
@@ -171,8 +176,6 @@ public static class DisplayFusionFunction
 		// get the position of the window in the monitor, and the current monitor
 		Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
 		Rectangle monitorRect = getCurrentMonitorBounds();
-
-		double factorComplement = 1 - factor;
 		
 		// calculate windows size variance
 		int randomShiftW = enableSizeVariance ? GetRandomShift(shiftRange) : 0;
@@ -235,51 +238,10 @@ public static class DisplayFusionFunction
 		                // "\nrandomShiftX " +randomShiftX+ "\trandomShiftY " +randomShiftY +
 						// "\nmonitorRect.X " + monitorRect.X + "\tmonitorRect.Y " + monitorRect.Y);
 	}
-		
 
-
-	
-	// zoneFill - what percetange of dedicated zone window shoudl occupy, e.g 0.9 for 90% space fill
-	// horizontalFactor - to determine how many zones there will be in the screen e.g. 0.33 (1/3) for one out of three zones 
-	// verticalFactor - same as horizontal but for vertical number of zones
-	// returns width, height, shiftW, shiftH
-	public static (int, int, int, int) CalculateFinalWindowSize(IntPtr windowHandle, double zoneFill, double horizontalFactor, double verticalFactor)
-	{
-		Rectangle monitorRect = getCurrentMonitorBounds();
-		
-		// calculate bae width and height
-		int width = Convert.ToInt32(monitorRect.Width * zoneFill * horizontalFactor);
-		int height = Convert.ToInt32(monitorRect.Height * zoneFill * verticalFactor);
-		
-		int shiftW = 0, shiftH = 0;
-		
-		// when enabled add variance
-		if (enableSizeVariance)
-		{
-			// only decrease window size so it is not out of bounds
-			shiftW = GetRandomShift(-shiftRange, 0);
-			shiftW = GetRandomShift(-shiftRange, 0);
-			
-			width = width + shiftW;
-			height = height + shiftH;
-		}
-		
-		return (width, height, shiftW, shiftH);
-	}
-
-	
 	public static int GetRandomShift(int range)
 	{
 		Random random = new Random();
-
-	//	int randomNumber;
-	//	do
-	//	{
-	//	    randomNumber = random.Next(-range, range + 1);
-	//	} 
-	//	while (randomNumber >= -range / 2 && randomNumber <= range / 2);
-		
-	//	return randomNumber;
 		return random.Next(-range, range + 1);
 	}
 	
@@ -289,7 +251,6 @@ public static class DisplayFusionFunction
 		return random.Next(start, end);
 	}
 
-	
 	// topMarginKey, bottomMarginKey, leftMarginKey, rightMarginKey - outer borders
 	// horizontalSplitKey - only one horizontal split
 	// verticalMiddleKey - right in the middle of screen for Left / Right split or 4 corners split
@@ -297,6 +258,7 @@ public static class DisplayFusionFunction
 	// verticalRightKey - right border when doing 1-1-1 and 2-1 splits
 	public static void generateSplitBorders(IntPtr windowHandle)
 	{
+		// todo add monitor id to keys?
 		Rectangle monitorRect = getCurrentMonitorBounds();
 		
 		// topMarginKey
@@ -398,7 +360,58 @@ public static class DisplayFusionFunction
 		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
 				// "\nwidth " + width + "\theight " + height );
 	}
-	
+			
+	public static void TopLeft(IntPtr windowHandle)
+	{
+		generateSplitBorders(windowHandle);
+		//Rectangle monitorRect = getCurrentMonitorBounds();
+		
+		int width = verticalMiddleSplit - leftMargin;
+		int height = horizontalSplit - topMargin;
+		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+		
+		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
+				// "\nwidth " + width + "\theight " + height );
+	}
+					
+	public static void TopRight(IntPtr windowHandle)
+	{
+		generateSplitBorders(windowHandle);
+		//Rectangle monitorRect = getCurrentMonitorBounds();
+		
+		int width = rightMargin - verticalMiddleSplit;
+		int height = horizontalSplit - topMargin;
+		BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
+		
+		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
+				// "\nwidth " + width + "\theight " + height );
+	}
+				
+	public static void BottomLeft(IntPtr windowHandle)
+	{
+		generateSplitBorders(windowHandle);
+		//Rectangle monitorRect = getCurrentMonitorBounds();
+		
+		int width = verticalMiddleSplit - leftMargin;
+		int height = bottomMargin - horizontalSplit;
+		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalSplit, width, height);
+		
+		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
+				// "\nwidth " + width + "\theight " + height );
+	}
+					
+	public static void BottomRight(IntPtr windowHandle)
+	{
+		generateSplitBorders(windowHandle);
+		//Rectangle monitorRect = getCurrentMonitorBounds();
+		
+		int width = rightMargin - verticalMiddleSplit;
+		int height = bottomMargin - horizontalSplit;
+		BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, horizontalSplit, width, height);
+		
+		// MessageBox.Show("X " + leftMargin + "\tY " + topMargin +
+				// "\nwidth " + width + "\theight " + height );
+	}
 	public static bool keyAlreadyGenerated(string key)
 	{
 		return !string.IsNullOrEmpty(BFS.ScriptSettings.ReadValue(key));
