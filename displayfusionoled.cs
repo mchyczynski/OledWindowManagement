@@ -167,13 +167,16 @@ public static class DisplayFusionFunction
 
 		while(enableWindowsAutoShift)
 		{
-			Rectangle monitorRect = getCurrentMonitorBounds();
-			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+			if (!BFS.Window.IsMinimized(windowHandle)) // dont move minimized windows because it wil un-minimize them
+			{
+				Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
+				Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
 
-			if (windowRect.X <= monitorRect.X || (windowRect.X + windowRect.Width >= monitorRect.X + monitorRect.Width)) horizontalShift = horizontalShift * -1;
-			if (windowRect.Y <= monitorRect.Y || (windowRect.Y + windowRect.Height >= monitorRect.Y + monitorRect.Height)) verticalShift = verticalShift * -1;
-			
-			BFS.Window.SetSizeAndLocation(windowHandle, windowRect.X+horizontalShift, windowRect.Y+verticalShift, windowRect.Width, windowRect.Height );
+				if (windowRect.X <= monitorRect.X || (windowRect.X + windowRect.Width >= monitorRect.X + monitorRect.Width)) horizontalShift = horizontalShift * -1;
+				if (windowRect.Y <= monitorRect.Y || (windowRect.Y + windowRect.Height >= monitorRect.Y + monitorRect.Height)) verticalShift = verticalShift * -1;
+				
+				BFS.Window.SetSizeAndLocation(windowHandle, windowRect.X+horizontalShift, windowRect.Y+verticalShift, windowRect.Width, windowRect.Height );
+			}
 			BFS.General.ThreadWait(30000);
 		}
 	}
@@ -214,7 +217,7 @@ public static class DisplayFusionFunction
 
 		// get the position of the window in the monitor, and the current monitor
 		Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
-		Rectangle monitorRect = getCurrentMonitorBounds();
+		Rectangle monitorRect = getMouseMonitorBounds();
 		
 		// calculate windows size variance
 		int randomShiftW = enableSizeVariance ? GetRandomShift(shiftRange) : 0;
@@ -300,7 +303,7 @@ public static class DisplayFusionFunction
 	public static void generateSplitBorders(IntPtr windowHandle)
 	{
 		// todo add monitor id to keys?
-		Rectangle monitorRect = getCurrentMonitorBounds();
+		Rectangle monitorRect = getMouseMonitorBounds();
 		
 		// topMarginKey
 		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(topMarginKey))
@@ -628,7 +631,7 @@ public static class DisplayFusionFunction
 		return (elapsedTime.TotalSeconds >= 15);
 	}
 	
-	public static Rectangle getCurrentMonitorBounds()
+	public static Rectangle getMouseMonitorBounds()
 	{
 		// Get the mouse position
 		Point mousePosition = new Point(BFS.Input.GetMousePositionX(), BFS.Input.GetMousePositionY());
@@ -636,7 +639,7 @@ public static class DisplayFusionFunction
 		// Get an array of the bounds for all monitors ignoring splits
         Rectangle[] monitorBoundsAll = BFS.Monitor.GetMonitorBoundsNoSplits();
 		
-		// Loop through the array of bounds and move the window to the centre of whichever one the mouse cursor is on
+		// Loop through the array of bounds and find monitor in which mouse in located
 		foreach (Rectangle monitorBounds in monitorBoundsAll)
 		{
             if (monitorBounds.Contains(mousePosition))
@@ -651,6 +654,25 @@ public static class DisplayFusionFunction
 		return default; 
 	}
 	
+	public static Rectangle getCurrentWindowMonitorBounds(IntPtr windowHandle)
+	{
+		Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+		Point windowPosition = new Point(windowRect.X, windowRect.Y);
+
+		// Get an array of the bounds for all monitors ignoring splits
+        Rectangle[] monitorBoundsAll = BFS.Monitor.GetMonitorBoundsNoSplits();
+		
+		// Loop through the array of bounds and find monitor of current window (top left corner)
+		foreach (Rectangle monitorBounds in monitorBoundsAll)
+		{
+            if (monitorBounds.Contains(windowPosition))
+            {
+                return monitorBounds;
+            }
+		}
+		return default; 
+	}
+
 	public static string MergeKeyCodes(params string[] keyCodes)
     {
         StringBuilder sb = new StringBuilder();
