@@ -17,7 +17,8 @@ public static class DisplayFusionFunction
 	public static bool enablePositionVariance = true;
 	public static bool enableWholeSpaceShift = true;
 	public static bool enableOutOfBoundChecks = true;
-	
+	public static bool enableWindowsAutoShift = false;
+
 	public static string topMarginKey = "topMarginKey";
 	public static string bottomMarginKey = "bottomMarginKey";
 	public static string leftMarginKey = "leftMarginKey";
@@ -85,6 +86,8 @@ public static class DisplayFusionFunction
 				{{ "DarkViolet", "Black", "NineSplitLeft" }},
 				{{ "DarkViolet", "Black", "NineSplitMiddle" }},
 				{{ "DarkViolet", "Black", "NineSplitRight" }},
+
+				{{ "PaleGreen", "Black", "MoveWindow"}},
 				
 				{{ "Pink", "Maroon", "--- Cancel ---" }}
 			};
@@ -127,8 +130,11 @@ public static class DisplayFusionFunction
 		
 		ToolStripItem item = sender as ToolStripItem;
 		if (item == null || item.Text == "--- Cancel ---")
+		{
+			enableWindowsAutoShift = false;
 			return;
-		
+		}
+
 		//generateSplitBorders(windowHandle);
 		RunMy(item.Text, windowHandle);
 	}
@@ -151,6 +157,25 @@ public static class DisplayFusionFunction
         {
 			MessageBox.Show("Function not found: " + functionName, "Error", MessageBoxButtons.OK);
         }
+	}
+
+	public static void MoveWindow(IntPtr windowHandle)
+	{
+		enableWindowsAutoShift = true;
+
+		int horizontalShift = -1, verticalShift = -1;
+
+		while(enableWindowsAutoShift)
+		{
+			Rectangle monitorRect = getCurrentMonitorBounds();
+			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+
+			if (windowRect.X <= monitorRect.X || (windowRect.X + windowRect.Width >= monitorRect.X + monitorRect.Width)) horizontalShift = horizontalShift * -1;
+			if (windowRect.Y <= monitorRect.Y || (windowRect.Y + windowRect.Height >= monitorRect.Y + monitorRect.Height)) verticalShift = verticalShift * -1;
+			
+			BFS.Window.SetSizeAndLocation(windowHandle, windowRect.X+horizontalShift, windowRect.Y+verticalShift, windowRect.Width, windowRect.Height );
+			BFS.General.ThreadWait(30000);
+		}
 	}
 	
 	public static void SingleWindow100(IntPtr windowHandle)
