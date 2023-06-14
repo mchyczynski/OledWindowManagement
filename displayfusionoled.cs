@@ -18,6 +18,7 @@ public static class DisplayFusionFunction
 	public static bool enableWholeSpaceShift = true;
 	public static bool enableOutOfBoundChecks = true;
 	public static bool enableWindowsAutoShift = false;
+	public static bool enableWindowsPositionTimedShift = false;
 
 	public static string topMarginKey = "topMarginKey";
 	public static string bottomMarginKey = "bottomMarginKey";
@@ -42,6 +43,7 @@ public static class DisplayFusionFunction
 	public static int verticalRightSplit = 0;
 	
 	public static DateTime lastBordersRecalc = DateTime.MinValue;
+	public static uint moveWindowTimerDelay = 1000; 
 
 	public static string KEY_SHIFT = "16";
 	public static string KEY_CTRL = "17";
@@ -131,7 +133,7 @@ public static class DisplayFusionFunction
 		ToolStripItem item = sender as ToolStripItem;
 		if (item == null || item.Text == "--- Cancel ---")
 		{
-			enableWindowsAutoShift = false;
+			enableWindowsPositionTimedShift = false;
 			return;
 		}
 
@@ -161,12 +163,14 @@ public static class DisplayFusionFunction
 
 	public static void MoveWindow(IntPtr windowHandle)
 	{
-		enableWindowsAutoShift = true;
+		enableWindowsPositionTimedShift = true;
 
 		int horizontalShift = -1, verticalShift = -1;
 
-		while(enableWindowsAutoShift)
+		while(enableWindowsPositionTimedShift)
 		{
+			BFS.General.ThreadWait(moveWindowTimerDelay); // first wait so that move is not instant
+
 			if (!BFS.Window.IsMinimized(windowHandle)) // dont move minimized windows because it wil un-minimize them
 			{
 				Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
@@ -177,7 +181,6 @@ public static class DisplayFusionFunction
 				
 				BFS.Window.SetSizeAndLocation(windowHandle, windowRect.X+horizontalShift, windowRect.Y+verticalShift, windowRect.Width, windowRect.Height );
 			}
-			BFS.General.ThreadWait(30000);
 		}
 	}
 	
@@ -255,6 +258,7 @@ public static class DisplayFusionFunction
 				iFinalWinX = iFinalWinX + randomShiftX;
 				iFinalWinY = iFinalWinY + randomShiftY;
 			}
+
 		}
 
 		// when enabled make sure window borders are within monitor
@@ -272,6 +276,7 @@ public static class DisplayFusionFunction
 		
 		// move and resize window
 		BFS.Window.SetSizeAndLocation(windowHandle, iFinalWinX, iFinalWinY, iFinalWinW, iFinalWinH );
+		if (enableWindowsAutoShift) MoveWindow(windowHandle);
 		
 		// display values for debug
 		// MessageBox.Show("iFinalWinX " +iFinalWinX+ "\tiFinalWinY " + iFinalWinY+
@@ -413,6 +418,7 @@ public static class DisplayFusionFunction
 			int height = bottomMargin - topMargin;
 			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
 		}
+		if (enableWindowsAutoShift) MoveWindow(windowHandle);
 	}
 	
 	public static void Right(IntPtr windowHandle)
@@ -433,6 +439,7 @@ public static class DisplayFusionFunction
 			int height = bottomMargin - topMargin;
 			BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
 		}
+		if (enableWindowsAutoShift) MoveWindow(windowHandle);
 	}
 			
 	public static void TopLeft(IntPtr windowHandle)
@@ -440,6 +447,7 @@ public static class DisplayFusionFunction
 		int width = verticalMiddleSplit - leftMargin;
 		int height = horizontalMiddleSplit - topMargin;
 		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+		if (enableWindowsAutoShift) MoveWindow(windowHandle);
 	}
 					
 	public static void TopRight(IntPtr windowHandle)
@@ -447,6 +455,7 @@ public static class DisplayFusionFunction
 		int width = rightMargin - verticalMiddleSplit;
 		int height = horizontalMiddleSplit - topMargin;
 		BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
+		if (enableWindowsAutoShift) MoveWindow(windowHandle);
 	}
 				
 	public static void BottomLeft(IntPtr windowHandle)
@@ -454,6 +463,7 @@ public static class DisplayFusionFunction
 		int width = verticalMiddleSplit - leftMargin;
 		int height = bottomMargin - horizontalMiddleSplit;
 		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
+		if (enableWindowsAutoShift) MoveWindow(windowHandle);
 	}
 					
 	public static void BottomRight(IntPtr windowHandle)
@@ -461,6 +471,7 @@ public static class DisplayFusionFunction
 		int width = rightMargin - verticalMiddleSplit;
 		int height = bottomMargin - horizontalMiddleSplit;
 		BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, horizontalMiddleSplit, width, height);
+		if (enableWindowsAutoShift) MoveWindow(windowHandle);
 	}
 	
 	public static void TopLeftmost(IntPtr windowHandle)
@@ -468,6 +479,7 @@ public static class DisplayFusionFunction
 		int width = verticalLeftSplit - leftMargin;
 		int height = horizontalMiddleSplit - topMargin;
 		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+		if (enableWindowsAutoShift) MoveWindow(windowHandle);
 	}
 	
 	public static void TopMiddle(IntPtr windowHandle)
@@ -475,6 +487,7 @@ public static class DisplayFusionFunction
 		int width = verticalRightSplit - verticalLeftSplit;
 		int height = horizontalMiddleSplit - topMargin;
 		BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, topMargin, width, height);
+		if (enableWindowsAutoShift) MoveWindow(windowHandle);
 	}	
 		
 	public static void TopRightmost(IntPtr windowHandle)
@@ -482,6 +495,7 @@ public static class DisplayFusionFunction
 		int width = rightMargin - verticalRightSplit;
 		int height = horizontalMiddleSplit - topMargin;
 		BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, topMargin, width, height);
+		if (enableWindowsAutoShift) MoveWindow(windowHandle);
 	}	
 	
 	public static void BottomLeftmost(IntPtr windowHandle)
@@ -489,6 +503,7 @@ public static class DisplayFusionFunction
 		int width = verticalLeftSplit - leftMargin;
 		int height = bottomMargin - horizontalMiddleSplit;
 		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
+		if (enableWindowsAutoShift) MoveWindow(windowHandle);
 	}
 	
 	public static void BottomMiddle(IntPtr windowHandle)
@@ -496,6 +511,7 @@ public static class DisplayFusionFunction
 		int width = verticalRightSplit - verticalLeftSplit;
 		int height = bottomMargin - horizontalMiddleSplit;
 		BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, horizontalMiddleSplit, width, height);
+		if (enableWindowsAutoShift) MoveWindow(windowHandle);
 	}	
 		
 	public static void BottomRightmost(IntPtr windowHandle)
@@ -503,6 +519,7 @@ public static class DisplayFusionFunction
 		int width = rightMargin - verticalRightSplit;
 		int height = bottomMargin - horizontalMiddleSplit;
 		BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, horizontalMiddleSplit, width, height);
+		if (enableWindowsAutoShift) MoveWindow(windowHandle);
 	}
 	
 
@@ -610,7 +627,7 @@ public static class DisplayFusionFunction
 		}
 
 		BFS.Window.SetSizeAndLocation(windowHandle, x, y, width, height);
-
+		if (enableWindowsAutoShift) MoveWindow(windowHandle);
 	}
 	
 	public static bool keyAlreadyGenerated(string key)
