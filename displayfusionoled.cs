@@ -43,7 +43,7 @@ public static class DisplayFusionFunction
 	public static int verticalRightSplit = 0;
 	
 	public static DateTime lastBordersRecalc = DateTime.MinValue;
-	public static uint moveWindowTimerDelay = 1000; 
+	public static uint moveWindowTimerDelay = 30000; 
 
 	public static string KEY_SHIFT = "16";
 	public static string KEY_CTRL = "17";
@@ -165,6 +165,7 @@ public static class DisplayFusionFunction
 	{
 		enableWindowsPositionTimedShift = true;
 
+		//int horizontalShift = -10, verticalShift = -10;
 		int horizontalShift = -1, verticalShift = -1;
 
 		while(enableWindowsPositionTimedShift)
@@ -180,6 +181,8 @@ public static class DisplayFusionFunction
 				if (windowRect.Y <= monitorRect.Y || (windowRect.Y + windowRect.Height >= monitorRect.Y + monitorRect.Height)) verticalShift = verticalShift * -1;
 				
 				BFS.Window.SetSizeAndLocation(windowHandle, windowRect.X+horizontalShift, windowRect.Y+verticalShift, windowRect.Width, windowRect.Height );
+				
+				//MessageBox.Show("Moved window " + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
 			}
 		}
 	}
