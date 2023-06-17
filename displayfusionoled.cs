@@ -1,848 +1,920 @@
-using System;
-using System.Text;
-using System.Reflection;
-using System.Drawing;
-using System.Windows.Forms;
+	using System;
+	using System.Text;
+	using System.Reflection;
+	using System.Drawing;
+	using System.Windows.Forms;
+	using System.Collections.Generic;
 
-// The 'windowHandle' parameter will contain the window handle for the:
-// - Active window when run by hotkey
-// - Window Location target when run by a Window Location rule
-// - TitleBar Button owner when run by a TitleBar Button
-// - Jump List owner when run from a Taskbar Jump List
-// - Currently focused window if none of these match
-public static class DisplayFusionFunction
-{
-	public static int shiftRange = 32;
-	public static bool enableSizeVariance = false;
-	public static bool enablePositionVariance = true;
-	public static bool enableWholeSpaceShift = true;
-	public static bool enableOutOfBoundChecks = true;
-	public static bool enableWindowsAutoShift = false;
-	public static bool enableWindowsPositionTimedShift = false;
-
-	public static string topMarginKey = "topMarginKey";
-	public static string bottomMarginKey = "bottomMarginKey";
-	public static string leftMarginKey = "leftMarginKey";
-	public static string rightMarginKey = "rightMarginKey";
-	public static string horizontalTopSplitKey = "horizontalTopSplitKey";
-	public static string horizontalMiddleSplitKey = "horizontalMiddleSplitKey";
-	public static string horizontalBottomSplitKey = "horizontalBottomSplitKey";
-	public static string verticalMiddleSplitKey = "verticalMiddleSplitKey";
-	public static string verticalLeftSplitKey = "verticalLeftSplitKey";
-	public static string verticalRightSplitKey = "verticalRightSplitKey";
-	public static string moveFlagKey = "moveFlagKey";
-
-	public static int topMargin = 0;
-	public static int bottomMargin = 0;
-	public static int leftMargin = 0;
-	public static int rightMargin = 0;
-	public static int horizontalTopSplit = 0;
-	public static int horizontalMiddleSplit = 0;
-	public static int horizontalBottomSplit = 0;
-	public static int verticalLeftSplit = 0;
-	public static int verticalMiddleSplit = 0;
-	public static int verticalRightSplit = 0;
-	
-	public static DateTime lastBordersRecalc = DateTime.MinValue;
-	public static uint moveWindowTimerDelay = 1000; 
-
-	public static string KEY_SHIFT = "16";
-	public static string KEY_CTRL = "17";
-	public static string KEY_A = "65";
-	public static string KEY_Q = "81";
-
-	public enum WindowHorizontalPosition
+	// The 'windowHandle' parameter will contain the window handle for the:
+	// - Active window when run by hotkey
+	// - Window Location target when run by a Window Location rule
+	// - TitleBar Button owner when run by a TitleBar Button
+	// - Jump List owner when run from a Taskbar Jump List
+	// - Currently focused window if none of these match
+	public static class DisplayFusionFunction
 	{
-		Left,
-		Right,
-		Middle
-	}
-	
-	public static void Run(IntPtr windowHandle)
-	{
-		//these are all of the functions from the "Window Management" functions list
-		//the function are just called by their names. to find their names, you can copy them
-		//from the context menus, or type "BFS.DisplayFusion.RunFunction(" and a window will come up
-		//with all of the available functions
-		//Regarding the "--- Cancel ---" entries, these are used to cancel the action, see below "MenuItem_Click"
+		public static int shiftRange = 0;
+		public static bool enableSizeVariance = false;
+		public static bool enablePositionVariance = true;
+		public static bool enableWholeSpaceShift = true;
+		public static bool enableOutOfBoundChecks = true;
+		public static bool enableWindowsAutoShift = false;
+		public static bool enableWindowsPositionTimedShift = false;
 
-		// BFS.ScriptSettings.WriteValue(moveFlagKey, false.ToString());
-		// MessageBox.Show("Stopping move" + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
+		public static string topMarginKey = "topMarginKey";
+		public static string bottomMarginKey = "bottomMarginKey";
+		public static string leftMarginKey = "leftMarginKey";
+		public static string rightMarginKey = "rightMarginKey";
+		public static string horizontalTopSplitKey = "horizontalTopSplitKey";
+		public static string horizontalMiddleSplitKey = "horizontalMiddleSplitKey";
+		public static string horizontalBottomSplitKey = "horizontalBottomSplitKey";
+		public static string verticalMiddleSplitKey = "verticalMiddleSplitKey";
+		public static string verticalLeftSplitKey = "verticalLeftSplitKey";
+		public static string verticalRightSplitKey = "verticalRightSplitKey";
+		public static string moveFlagKey = "moveFlagKey";
 
-		string[, ,] MenuEntries = 
-			{
-				//	{{ "Background-Color", "Foreground-Color", "Function-Name" }}
-				
-				{{ "Aquamarine", "Black", "SingleWindow100" }},
-				{{ "Aquamarine", "Black", "SingleWindow95" }},
-				{{ "Aquamarine", "Black", "SingleWindow90" }},
-				{{ "Aquamarine", "Black", "SingleWindow80" }},
-				{{ "Aquamarine", "Black", "SingleWindow60" }},
-				
-				{{ "Khaki", "Black", "Left" }},
-				{{ "Khaki", "Black", "Right" }},
-				
-				// {{ "PaleGreen", "Black", "TopLeft" }},
-				
-				// {{ "DodgerBlue", "Black", "TopLeftmost" }},
-				
-				{{ "DodgerBlue", "Black", "SixSplitLeft" }},
-				{{ "DodgerBlue", "Black", "SixSplitMiddle" }},
-				{{ "DodgerBlue", "Black", "SixSplitRight" }},
-				
-				{{ "DarkViolet", "Black", "NineSplitLeft" }},
-				{{ "DarkViolet", "Black", "NineSplitMiddle" }},
-				{{ "DarkViolet", "Black", "NineSplitRight" }},
+		// public static int topMargin = 0;
+		// public static int bottomMargin = 0;
+		// public static int leftMargin = 0;
+		// public static int rightMargin = 0;
+		// public static int horizontalTopSplit = 0;
+		// public static int horizontalMiddleSplit = 0;
+		// public static int horizontalBottomSplit = 0;
+		// public static int verticalLeftSplit = 0;
+		// public static int verticalMiddleSplit = 0;
+		// public static int verticalRightSplit = 0;
+		
+		public static DateTime lastBordersRecalc = DateTime.MinValue;
+		public static uint moveWindowTimerDelay = 1000; 
 
-				{{ "PaleGreen", "Black", "StartMovingWindows"}},
-				
-				{{ "Pink", "Maroon", "--- Cancel ---" }}
-			};
+		public static string KEY_SHIFT = "16";
+		public static string KEY_CTRL = "17";
+		public static string KEY_A = "65";
+		public static string KEY_Q = "81";
 
-		// create a new ContextMenuStrip to show the items
-		using(ContextMenuStrip menu = new ContextMenuStrip())
+		// to store marings and splits for each monitor
+		// e.g. bordersDict[monitorID][horizontalTopSplitKey] = 10;
+		public static Dictionary<uint, Dictionary<string, int>> bordersDict = new Dictionary<uint, Dictionary<string, int>>();
+
+		public enum WindowHorizontalPosition
 		{
-			//dont show the padding on the left of the menu
-			menu.ShowCheckMargin = false;
-			menu.ShowImageMargin = false;
+			Left,
+			Right,
+			Middle
+		}
+		
+		public static void Run(IntPtr windowHandle)
+		{
+			//these are all of the functions from the "Window Management" functions list
+			//the function are just called by their names. to find their names, you can copy them
+			//from the context menus, or type "BFS.DisplayFusion.RunFunction(" and a window will come up
+			//with all of the available functions
+			//Regarding the "--- Cancel ---" entries, these are used to cancel the action, see below "MenuItem_Click"
 
-			//add items to the menu, and use our custom function when a user clicks on the items
-			for ( int i = 0; i < ( MenuEntries.Length / MenuEntries.Rank ); i++ )
+			// BFS.ScriptSettings.WriteValue(moveFlagKey, false.ToString());
+			// MessageBox.Show("Stopping move" + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
+
+			string[, ,] MenuEntries = 
+				{
+					//	{{ "Background-Color", "Foreground-Color", "Function-Name" }}
+					
+					{{ "Aquamarine", "Black", "SingleWindow100" }},
+					{{ "Aquamarine", "Black", "SingleWindow95" }},
+					{{ "Aquamarine", "Black", "SingleWindow90" }},
+					{{ "Aquamarine", "Black", "SingleWindow80" }},
+					{{ "Aquamarine", "Black", "SingleWindow60" }},
+					
+					{{ "Khaki", "Black", "Left" }},
+					{{ "Khaki", "Black", "Right" }},
+					
+					// {{ "PaleGreen", "Black", "TopLeft" }},
+					
+					// {{ "DodgerBlue", "Black", "TopLeftmost" }},
+					
+					{{ "DodgerBlue", "Black", "SixSplitLeft" }},
+					{{ "DodgerBlue", "Black", "SixSplitMiddle" }},
+					{{ "DodgerBlue", "Black", "SixSplitRight" }},
+					
+					{{ "DarkViolet", "Black", "NineSplitLeft" }},
+					{{ "DarkViolet", "Black", "NineSplitMiddle" }},
+					{{ "DarkViolet", "Black", "NineSplitRight" }},
+
+					{{ "PaleGreen", "Black", "StartMovingWindows"}},
+					
+					{{ "Pink", "Maroon", "--- Cancel ---" }}
+				};
+
+			// create a new ContextMenuStrip to show the items
+			using(ContextMenuStrip menu = new ContextMenuStrip())
 			{
-				menu.Items.Add(MenuEntries[i, 0, 2]); // add function name into PPM menu an entry
-				menu.Items[menu.Items.Count - 1].Click += (sender, e) => MenuItem_Click(sender, e, windowHandle);; // always invoke MenuItem_Click
-				menu.Items[menu.Items.Count - 1].BackColor = Color.FromName( MenuEntries[i, 0, 0]);
-				menu.Items[menu.Items.Count - 1].ForeColor = Color.FromName( MenuEntries[i, 0, 1]);
+				//dont show the padding on the left of the menu
+				menu.ShowCheckMargin = false;
+				menu.ShowImageMargin = false;
+
+				//add items to the menu, and use our custom function when a user clicks on the items
+				for ( int i = 0; i < ( MenuEntries.Length / MenuEntries.Rank ); i++ )
+				{
+					menu.Items.Add(MenuEntries[i, 0, 2]); // add function name into PPM menu an entry
+					menu.Items[menu.Items.Count - 1].Click += (sender, e) => MenuItem_Click(sender, e, windowHandle);; // always invoke MenuItem_Click
+					menu.Items[menu.Items.Count - 1].BackColor = Color.FromName( MenuEntries[i, 0, 0]);
+					menu.Items[menu.Items.Count - 1].ForeColor = Color.FromName( MenuEntries[i, 0, 1]);
+				}
+
+				//if the menu will show on the screen, show it. otherwise, show it above the mouse
+				if(BFS.Monitor.GetMonitorBoundsByMouseCursor().Contains(new Point(BFS.Input.GetMousePositionX(), BFS.Input.GetMousePositionY() + menu.Height)))
+					menu.Show(BFS.Input.GetMousePositionX(), BFS.Input.GetMousePositionY());
+				else
+					menu.Show(new Point(BFS.Input.GetMousePositionX(), BFS.Input.GetMousePositionY()), ToolStripDropDownDirection.AboveRight);
+
+				//set focus to the menu
+				BFS.Window.Focus(menu.Handle);
+
+				//wait for the menu to close
+				while(menu.Visible)
+				Application.DoEvents();
+			}
+		}
+		
+		private static void MenuItem_Click(object sender, EventArgs e, IntPtr windowHandle)
+		{
+			
+			ToolStripItem item = sender as ToolStripItem;
+			if (item == null || item.Text == "--- Cancel ---")
+			{
+				BFS.ScriptSettings.WriteValue(moveFlagKey, false.ToString());
+				enableWindowsPositionTimedShift = false;
+				return;
 			}
 
-			//if the menu will show on the screen, show it. otherwise, show it above the mouse
-			if(BFS.Monitor.GetMonitorBoundsByMouseCursor().Contains(new Point(BFS.Input.GetMousePositionX(), BFS.Input.GetMousePositionY() + menu.Height)))
-				menu.Show(BFS.Input.GetMousePositionX(), BFS.Input.GetMousePositionY());
+			generateSplitBordersAllMonitors();
+			RunMy(item.Text, windowHandle);
+		}
+
+		private static void RunMy(string functionName, IntPtr windowHandle)
+		{
+			// Get type, that contains function
+			Type type = typeof(DisplayFusionFunction); 
+			
+			// Get method based on the name
+			MethodInfo method = type.GetMethod(functionName);
+			
+			if (method != null)
+			{
+				method.Invoke(null, new object[] { windowHandle });
+			}
 			else
-				menu.Show(new Point(BFS.Input.GetMousePositionX(), BFS.Input.GetMousePositionY()), ToolStripDropDownDirection.AboveRight);
-
-			//set focus to the menu
-			BFS.Window.Focus(menu.Handle);
-
-			//wait for the menu to close
-			while(menu.Visible)
-			Application.DoEvents();
+			{
+				MessageBox.Show("Function not found: " + functionName, "Error", MessageBoxButtons.OK);
+			}
 		}
-	}
-	
-	private static void MenuItem_Click(object sender, EventArgs e, IntPtr windowHandle)
-	{
-		
-		ToolStripItem item = sender as ToolStripItem;
-		if (item == null || item.Text == "--- Cancel ---")
+
+		public static void StartMovingWindows(IntPtr windowHandle)
 		{
+			// MessageBox.Show("StartMovingWindows start" + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
+			bool alreadyMovingWindows = false;
+			bool.TryParse(BFS.ScriptSettings.ReadValue(moveFlagKey), out alreadyMovingWindows);
+
+			if(!alreadyMovingWindows)
+			{
+				MessageBox.Show("Starting MoveWindows" + BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle));
+				MoveWindows();
+			}
+			else
+			{
+				MessageBox.Show("StartMovingWindows FALSE" + BFS.Application.GetAppIDByWindow(windowHandle).ToString()+ " " + BFS.Window.GetText(windowHandle));
+			}
+		}
+		public static void MoveWindows()
+		{
+			enableWindowsPositionTimedShift = true;
+			const int horShiftDistance = 10, verShiftDistance = 10;
+
+			int horDirection = -1, verDirection = -1; // calculated each iteration when monitor edge hit
+			int finalHorShift = 0, finalVerShift = 0; // calculated on the beggining of each iteration based on distance and direction determined prev iteration
+
+			while(enableWindowsPositionTimedShift)
+			{
+				BFS.ScriptSettings.WriteValue(moveFlagKey, true.ToString());
+				BFS.General.ThreadWait(moveWindowTimerDelay); // first wait so that move is not instant
+
+				// update shift based on direction from prev iteration
+				finalHorShift = horShiftDistance * horDirection;
+				finalVerShift = verShiftDistance * verDirection;
+
+				foreach(IntPtr windowHandle in BFS.Window.GetVisibleAndMinimizedWindowHandles())
+				{
+					string name = BFS.Window.GetText(windowHandle);
+
+					if (BFS.Window.IsMinimized(windowHandle) || // dont move minimized windows because it wil un-minimize them
+						BFS.Window.IsMaximized(windowHandle) ||  // ignore maximized windows
+						(String.IsNullOrEmpty(name) || name == "Program Manager") ) // ignore fake windows
+					{
+						continue;
+					}
+
+					MessageBox.Show("Processing window" + BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle));
+					Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
+					Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+
+					if(monitorRect.Width == 0 || monitorRect.Height == 0)
+					{
+						MessageBox.Show("STOP move no monitor");
+						enableWindowsPositionTimedShift = false;
+						break;
+					}
+
+					// TODO move margins and splits
+					//  find what direction
+					// one pass through all windows and decide direction for next move? (so that 2 loops not needed)
+					if ( /* in current margins */ true)
+					{
+						// move with other windows inside
+					}
+					else
+					{
+						// move independtly
+						// each window own direction
+					}
+
+					// check if new position will be outside of current monitor and switch shift direction
+					// would hit monitor LEFT?
+					if (windowRect.X+finalHorShift <= monitorRect.X) 
+					{
+						MessageBox.Show($"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} ({windowRect.X+finalHorShift}) <= monitorRect.X {monitorRect.X}");
+						horDirection = 1;
+					}
+
+					// would hit monitor RIGHT?
+					if (windowRect.X+finalHorShift + windowRect.Width >= monitorRect.X + monitorRect.Width)
+					{
+						MessageBox.Show($@"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} +windowRect.Width {windowRect.Width} ({windowRect.X+finalHorShift+windowRect.Width}) 
+										>=
+										monitorRect.X {monitorRect.X} + monitorRect.Width {monitorRect.Width} ({monitorRect.X+monitorRect.Width})");
+						horDirection = -1;
+					}
+					
+					// would hit monitor TOP?
+					if (windowRect.Y+finalVerShift <= monitorRect.Y)
+					{				
+						MessageBox.Show($"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} ({windowRect.Y+finalVerShift}) <= monitorRect.Y {monitorRect.Y}");
+						verDirection = 1;
+					}
+					
+					// would hit monitor BOTTOM?
+					if(windowRect.Y+finalVerShift + windowRect.Height >= monitorRect.Y + monitorRect.Height)
+					{
+						MessageBox.Show($@"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} +windowRect.Height {windowRect.Height} ({windowRect.Y+finalVerShift+windowRect.Height}) 
+										>= 
+										monitorRect.Y {monitorRect.Y} + monitorRect.Height {monitorRect.Height} ({monitorRect.Y+monitorRect.Height})");
+						verDirection = -1;
+					}
+
+					// calculate final shift and move window // moved on begginign so that direction is changed for next move
+					// finalHorShift = horShiftDistance * horDirection;
+					// finalVerShift = verShiftDistance * verDirection;
+					BFS.Window.SetLocation(windowHandle, windowRect.X+finalHorShift, windowRect.Y+finalVerShift);
+					// MessageBox.Show("Moved window " + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
+				}
+			}
+
 			BFS.ScriptSettings.WriteValue(moveFlagKey, false.ToString());
-			enableWindowsPositionTimedShift = false;
-			return;
+			MessageBox.Show("Stopping move");
 		}
 
-		//generateSplitBorders(windowHandle);
-		RunMy(item.Text, windowHandle);
-	}
-
-	private static void RunMy(string functionName, IntPtr windowHandle)
-	{
-		// Get type, that contains function
-        Type type = typeof(DisplayFusionFunction); 
-        
-        // Get method based on the name
-        MethodInfo method = type.GetMethod(functionName);
-		
-        if (method != null)
-        {
-            method.Invoke(null, new object[] { windowHandle });
-        }
-        else
-        {
-			MessageBox.Show("Function not found: " + functionName, "Error", MessageBoxButtons.OK);
-        }
-	}
-
-	public static void StartMovingWindows(IntPtr windowHandle)
-	{
-		// MessageBox.Show("StartMovingWindows start" + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
-		bool alreadyMovingWindows = false;
-		bool.TryParse(BFS.ScriptSettings.ReadValue(moveFlagKey), out alreadyMovingWindows);
-
-		if(!alreadyMovingWindows)
-		{
-			MessageBox.Show("Starting MoveWindows" + BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle));
-			//BFS.ScriptSettings.WriteValue(moveFlagKey, true.ToString());
-			MoveWindows();
-		}
-		else
-		{
-			MessageBox.Show("StartMovingWindows FALSE" + BFS.Application.GetAppIDByWindow(windowHandle).ToString()+ " " + BFS.Window.GetText(windowHandle));
-		}
-	}
-	public static void MoveWindows()
-	{
-		enableWindowsPositionTimedShift = true;
-
-		int horizontalShift = 10, verticalShift = 10;
-		int horDirection = -1, verDirection = -1;
-		int finalHorShift = horizontalShift * horDirection;
-		int finalVerShift = verticalShift * verDirection;
-
-		IntPtr[] windowsHandlesAll = BFS.Window.GetVisibleAndMinimizedWindowHandles();
-
-		// int i = 1;
-		// foreach(IntPtr windowHandle in windowsHandlesAll)
+		// public static MoveSingleWIndow(IntPtr windowHandle, int shiftHor, int shiftVer)
 		// {
-		// 	string min = BFS.Window.IsMinimized(windowHandle) ? "MIN" : "no";
-		// 	string max = BFS.Window.IsMaximized(windowHandle) ? "MAX" : "no";
-		// 	string pid = BFS.Application.GetAppIDByWindow(windowHandle).ToString();
-		// 	string name = BFS.Window.GetText(windowHandle);
 		// 	Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
-
-		// 	if (name == "" || name == "Program Manager")
-		// 		continue;
-
-		// 	MessageBox.Show($"{i} [{name}]({pid}) X.{windowRect.X} Y.{windowRect.Y} W.{windowRect.Width} H.{windowRect.Height}  min:{min}, max: {max}", "windows info");
+		// 	BFS.Window.SetLocation(windowHandle, windowRect.X+finalHorShift, windowRect.Y+finalVerShift);
 		// }
-		// BFS.ScriptSettings.WriteValue(moveFlagKey, false.ToString());
-		// return;
-		while(enableWindowsPositionTimedShift)
+		
+		public static void SingleWindow100(IntPtr windowHandle)
 		{
-			BFS.ScriptSettings.WriteValue(moveFlagKey, true.ToString());
-			BFS.General.ThreadWait(moveWindowTimerDelay); // first wait so that move is not instant
-
-			foreach(IntPtr windowHandle in windowsHandlesAll)
-			{
-				string name = BFS.Window.GetText(windowHandle);
-
-				if (BFS.Window.IsMinimized(windowHandle) || // dont move minimized windows because it wil un-minimize them
-					BFS.Window.IsMaximized(windowHandle) ||  // ignore maximized windows
-					(String.IsNullOrEmpty(name) || name == "Program Manager") ) // ignore fake windows
-				{
-					continue;
-				}
-
-				MessageBox.Show("Processing window" + BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle));
-				Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
-				Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
-
-				if(monitorRect.Width == 0 || monitorRect.Height == 0)
-				{
-					MessageBox.Show("STOP move no monitor");
-					enableWindowsPositionTimedShift = false;
-					break;
-				}
-
-				// check if new position will be outside of current monitor and switch shift direction
-				// would hit monitor LEFT?
-				if (windowRect.X+finalHorShift <= monitorRect.X) 
-				{
-					MessageBox.Show($"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} ({windowRect.X+finalHorShift}) <= monitorRect.X {monitorRect.X}");
-					horDirection = 1;
-				}
-
-				// would hit monitor RIGHT?
-				if (windowRect.X+finalHorShift + windowRect.Width >= monitorRect.X + monitorRect.Width)
-				{
-					MessageBox.Show($@"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} +windowRect.Width {windowRect.Width} ({windowRect.X+finalHorShift+windowRect.Width}) 
-									>=
-									monitorRect.X {monitorRect.X} + monitorRect.Width {monitorRect.Width} ({monitorRect.X+monitorRect.Width})");
-					horDirection = -1;
-				}
-				
-				// would hit monitor TOP?
-				if (windowRect.Y+finalVerShift <= monitorRect.Y)
-				{				
-					MessageBox.Show($"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} ({windowRect.Y+finalVerShift}) <= monitorRect.Y {monitorRect.Y}");
-					verDirection = 1;
-				}
-				
-				// would hit monitor BOTTOM?
-				if(windowRect.Y+finalVerShift + windowRect.Height >= monitorRect.Y + monitorRect.Height)
-				{
-					MessageBox.Show($@"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} +windowRect.Height {windowRect.Height} ({windowRect.Y+finalVerShift+windowRect.Height}) 
-									>= 
-									monitorRect.Y {monitorRect.Y} + monitorRect.Height {monitorRect.Height} ({monitorRect.Y+monitorRect.Height})");
-					verDirection = -1;
-				}
-
-				// calculate final shift and move window
-				finalHorShift = horizontalShift * horDirection;
-				finalVerShift = verticalShift * verDirection;
-				BFS.Window.SetLocation(windowHandle, windowRect.X+finalHorShift, windowRect.Y+finalVerShift);
-				
-				// MessageBox.Show("Moved window " + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
-			}
+			SingleWindowX(windowHandle, 1);
 		}
-
-		BFS.ScriptSettings.WriteValue(moveFlagKey, false.ToString());
-		MessageBox.Show("Stopping move");
-
-	}
-	
-	public static void SingleWindow100(IntPtr windowHandle)
-	{
-		SingleWindowX(windowHandle, 1);
-	}
-	
-	public static void SingleWindow95(IntPtr windowHandle)
-	{
-		SingleWindowX(windowHandle, 0.95);
-	}
-	
-	public static void SingleWindow90(IntPtr windowHandle)
-	{
-		SingleWindowX(windowHandle, 0.90);
-	}
 		
-	public static void SingleWindow80(IntPtr windowHandle)
-	{
-		SingleWindowX(windowHandle, 0.80);
-	}
-	
-	public static void SingleWindow60(IntPtr windowHandle)
-	{
-		SingleWindowX(windowHandle, 0.60);
-	}
-
-	
-	public static void SingleWindowX(IntPtr windowHandle, double factor)
-	{
-		// MessageBox.Show("To jest powiadomienie SingleWindow90.", "Tytuł powiadomienia", MessageBoxButtons.OK);
-
-		// check to see if there was an error, if there was, exit function
-		if (windowHandle == IntPtr.Zero)
-			return;
-
-		// get the position of the window in the monitor, and the current monitor
-		Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
-		Rectangle monitorRect = getMouseMonitorBounds();
-		
-		// calculate windows size variance
-		int randomShiftW = enableSizeVariance ? GetRandomShift(shiftRange) : 0;
-		int randomShiftH = enableSizeVariance ? GetRandomShift(shiftRange) : 0;
-		
-		// calculate final window size
-		int iFinalWinW = Convert.ToInt32(monitorRect.Width * factor) + randomShiftW;
-		int iFinalWinH = Convert.ToInt32(monitorRect.Height * factor) + randomShiftH;
-		
-		// calculate window position variance
-		int randomShiftX = 0, randomShiftY = 0;
-		int iFinalWinX = monitorRect.X + (monitorRect.Width - iFinalWinW) / 2;
-		int iFinalWinY = monitorRect.Y + (monitorRect.Height - iFinalWinH) / 2;
-		
-		if (enablePositionVariance)
+		public static void SingleWindow95(IntPtr windowHandle)
 		{
-			if(enableWholeSpaceShift) // randomly move windows within whole unused space
-			{
-				// calculate how much free space there is
-				int freeSpaceW = monitorRect.Width - iFinalWinW;
-				int freeSpaceH = monitorRect.Height - iFinalWinH;
-				
-				// override final position as generateed random shift within free space
-				randomShiftX = GetRandomShift(0, freeSpaceW);
-				randomShiftY = GetRandomShift(0, freeSpaceH);
-				iFinalWinX = monitorRect.X + randomShiftX;
-				iFinalWinY = monitorRect.Y + randomShiftY;
-			}
-			else // generate const value random shift 
-			{
-				randomShiftX = GetRandomShift(shiftRange);
-				randomShiftY = GetRandomShift(shiftRange);
-				
-				// calculate final position by adding generated shift to centered position
-				iFinalWinX = iFinalWinX + randomShiftX;
-				iFinalWinY = iFinalWinY + randomShiftY;
-			}
-
+			SingleWindowX(windowHandle, 0.95);
 		}
-
-		// when enabled make sure window borders are within monitor
-		if(enableOutOfBoundChecks)
+		
+		public static void SingleWindow90(IntPtr windowHandle)
 		{
-			if ( iFinalWinW > monitorRect.Width) iFinalWinW = monitorRect.Width; // check window too wide
-			if ( iFinalWinH > monitorRect.Height) iFinalWinH = monitorRect.Height; // check window too high
+			SingleWindowX(windowHandle, 0.90);
+		}
 			
-			if (iFinalWinX < monitorRect.X) iFinalWinX = monitorRect.X; // check window out of bound left
-			if (iFinalWinY < monitorRect.Y) iFinalWinY = monitorRect.Y; // check window out of bound top
-
-			if (( iFinalWinX + iFinalWinW - monitorRect.X) > monitorRect.Width ) iFinalWinX = monitorRect.X + monitorRect.Width - iFinalWinW; // check window out of bound right
-			if (( iFinalWinY + iFinalWinH - monitorRect.Y) > monitorRect.Height ) iFinalWinY = monitorRect.Y + monitorRect.Height - iFinalWinH; // check window out of bound bottom
-		}
-		
-		// move and resize window
-		BFS.Window.SetSizeAndLocation(windowHandle, iFinalWinX, iFinalWinY, iFinalWinW, iFinalWinH );
-		if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-		
-		// display values for debug
-		// MessageBox.Show("iFinalWinX " +iFinalWinX+ "\tiFinalWinY " + iFinalWinY+
-		                // "\niFinalWinW " +iFinalWinW+ "\tiFinalWinH " +iFinalWinH+ 
-		                // "\nrandomShiftW " +randomShiftW+ "\trandomShiftH " + randomShiftH+
-		                // "\nrandomShiftX " +randomShiftX+ "\trandomShiftY " +randomShiftY +
-						// "\nmonitorRect.X " + monitorRect.X + "\tmonitorRect.Y " + monitorRect.Y);
-	}
-
-	public static int GetRandomShift(int range)
-	{
-		Random random = new Random();
-		return random.Next(-range, range + 1);
-	}
-	
-	public static int GetRandomShift(int start, int end)
-	{
-		Random random = new Random();
-		return random.Next(start, end);
-	}
-
-	// topMarginKey, bottomMarginKey, leftMarginKey, rightMarginKey - outer borders
-	// horizontalTopSplitKey - upper horizontal split for e.g bottom border on topmost window in 3 window horizontal split
-	// horizontalMiddleSplitKey - horizontal split in the middle for e.g one top window and one bottom window
-	// horizontalBottomSplitKey - lower horizontal split for e.g top border on bottommost window in 3 window horizontal split
-	// verticalMiddleSplitKey - right in the middle of screen for Left / Right split or 4 corners split
-	// verticalLeftSplitKey - left border when doing 1-1-1, 1-2 splits 
-	// verticalRightSplitKey - right border when doing 1-1-1 and 2-1 splits
-	public static void generateSplitBorders(IntPtr windowHandle)
-	{
-		// todo add monitor id to keys?
-		Rectangle monitorRect = getMouseMonitorBounds();
-		
-		// topMarginKey
-		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(topMarginKey))
+		public static void SingleWindow80(IntPtr windowHandle)
 		{
-			topMargin = monitorRect.Y + GetRandomShift(0, shiftRange);
-			BFS.ScriptSettings.WriteValue(topMarginKey, topMargin.ToString());
+			SingleWindowX(windowHandle, 0.80);
 		}
-		else topMargin = readIntKey(topMarginKey);
+		
+		public static void SingleWindow60(IntPtr windowHandle)
+		{
+			SingleWindowX(windowHandle, 0.60);
+		}
+
+		
+		public static void SingleWindowX(IntPtr windowHandle, double factor)
+		{
+			// MessageBox.Show("To jest powiadomienie SingleWindow90.", "Tytuł powiadomienia", MessageBoxButtons.OK);
+
+			// check to see if there was an error, if there was, exit function
+			if (windowHandle == IntPtr.Zero)
+				return;
+
+			// get the position of the window in the monitor, and the current monitor
+			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+			Rectangle monitorRect = getMouseMonitorBounds();
+			
+			// calculate windows size variance
+			int randomShiftW = enableSizeVariance ? GetRandomShift(shiftRange) : 0;
+			int randomShiftH = enableSizeVariance ? GetRandomShift(shiftRange) : 0;
+			
+			// calculate final window size
+			int iFinalWinW = Convert.ToInt32(monitorRect.Width * factor) + randomShiftW;
+			int iFinalWinH = Convert.ToInt32(monitorRect.Height * factor) + randomShiftH;
+			
+			// calculate window position variance
+			int randomShiftX = 0, randomShiftY = 0;
+			int iFinalWinX = monitorRect.X + (monitorRect.Width - iFinalWinW) / 2;
+			int iFinalWinY = monitorRect.Y + (monitorRect.Height - iFinalWinH) / 2;
+			
+			if (enablePositionVariance)
+			{
+				if(enableWholeSpaceShift) // randomly move windows within whole unused space
+				{
+					// calculate how much free space there is
+					int freeSpaceW = monitorRect.Width - iFinalWinW;
+					int freeSpaceH = monitorRect.Height - iFinalWinH;
+					
+					// override final position as generated random shift within free space
+					randomShiftX = GetRandomShift(0, freeSpaceW);
+					randomShiftY = GetRandomShift(0, freeSpaceH);
+					iFinalWinX = monitorRect.X + randomShiftX;
+					iFinalWinY = monitorRect.Y + randomShiftY;
+				}
+				else // generate const value random shift 
+				{
+					randomShiftX = GetRandomShift(shiftRange);
+					randomShiftY = GetRandomShift(shiftRange);
+					
+					// calculate final position by adding generated shift to centered position
+					iFinalWinX = iFinalWinX + randomShiftX;
+					iFinalWinY = iFinalWinY + randomShiftY;
+				}
+
+			}
+
+			// when enabled make sure window borders are within monitor
+			if(enableOutOfBoundChecks)
+			{
+				if ( iFinalWinW > monitorRect.Width) iFinalWinW = monitorRect.Width; // check window too wide
+				if ( iFinalWinH > monitorRect.Height) iFinalWinH = monitorRect.Height; // check window too high
 				
-		// bottomMarginKey
-		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(bottomMarginKey))
-		{
-			bottomMargin = monitorRect.Y + monitorRect.Height - GetRandomShift(0, shiftRange);
-			BFS.ScriptSettings.WriteValue(bottomMarginKey, bottomMargin.ToString());
+				if (iFinalWinX < monitorRect.X) iFinalWinX = monitorRect.X; // check window out of bound left
+				if (iFinalWinY < monitorRect.Y) iFinalWinY = monitorRect.Y; // check window out of bound top
+
+				if (( iFinalWinX + iFinalWinW - monitorRect.X) > monitorRect.Width ) iFinalWinX = monitorRect.X + monitorRect.Width - iFinalWinW; // check window out of bound right
+				if (( iFinalWinY + iFinalWinH - monitorRect.Y) > monitorRect.Height ) iFinalWinY = monitorRect.Y + monitorRect.Height - iFinalWinH; // check window out of bound bottom
+			}
+			
+			// move and resize window
+			BFS.Window.SetSizeAndLocation(windowHandle, iFinalWinX, iFinalWinY, iFinalWinW, iFinalWinH );
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+			
+			// display values for debug
+			// MessageBox.Show("iFinalWinX " +iFinalWinX+ "\tiFinalWinY " + iFinalWinY+
+							// "\niFinalWinW " +iFinalWinW+ "\tiFinalWinH " +iFinalWinH+ 
+							// "\nrandomShiftW " +randomShiftW+ "\trandomShiftH " + randomShiftH+
+							// "\nrandomShiftX " +randomShiftX+ "\trandomShiftY " +randomShiftY +
+							// "\nmonitorRect.X " + monitorRect.X + "\tmonitorRect.Y " + monitorRect.Y);
 		}
-		else bottomMargin = readIntKey(bottomMarginKey);
+
+		public static int GetRandomShift(int range)
+		{
+			return 0;
+			Random random = new Random();
+			return random.Next(-range, range + 1);
+		}
 		
-		// leftMarginKey
-		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(leftMarginKey))
+		public static int GetRandomShift(int start, int end)
 		{
-			leftMargin = monitorRect.X + GetRandomShift(0, shiftRange);
-			BFS.ScriptSettings.WriteValue(leftMarginKey, leftMargin.ToString());
+			return 0;
+			Random random = new Random();
+			return random.Next(start, end);
 		}
-		else leftMargin = readIntKey(leftMarginKey);
+
+		
+
+		// topMarginKey, bottomMarginKey, leftMarginKey, rightMarginKey - outer borders
+		// horizontalTopSplitKey - upper horizontal split for e.g bottom border on topmost window in 3 window horizontal split
+		// horizontalMiddleSplitKey - horizontal split in the middle for e.g one top window and one bottom window
+		// horizontalBottomSplitKey - lower horizontal split for e.g top border on bottommost window in 3 window horizontal split
+		// verticalMiddleSplitKey - right in the middle of screen for Left / Right split or 4 corners split
+		// verticalLeftSplitKey - left border when doing 1-1-1, 1-2 splits 
+		// verticalRightSplitKey - right border when doing 1-1-1 and 2-1 splits
+		public static void generateSplitBordersAllMonitors()
+		{
+			// Rectangle[] allMonitors = BFS.Monitor.GetMonitorBoundsNoSplits();
+			uint[] allMonitors = BFS.Monitor.GetMonitorIDs();
+
+			foreach (uint monitorID in allMonitors)
+			{
+				Rectangle monitorRect = BFS.Monitor.GetMonitorBoundsByID(monitorID);
+
+
+
+				// create dict of borders for this monitorID if not present 
+				if (!bordersDict.TryGetValue(monitorID, out Dictionary<string,int> borders))
+				{
+					bordersDict[monitorID] = new Dictionary<string,int>();
+				}
+
+				generateSplitBorder(monitorID, topMarginKey,  monitorRect.Y + GetRandomShift(0, shiftRange));
+				generateSplitBorder(monitorID, bottomMarginKey, monitorRect.Y + monitorRect.Height - GetRandomShift(0, shiftRange));
+				generateSplitBorder(monitorID, leftMarginKey, monitorRect.X + GetRandomShift(0, shiftRange));
+				generateSplitBorder(monitorID, rightMarginKey, monitorRect.X + monitorRect.Width - GetRandomShift(0, shiftRange));
+				generateSplitBorder(monitorID, horizontalTopSplitKey, monitorRect.Y + monitorRect.Height / 3 + GetRandomShift(shiftRange));
+				generateSplitBorder(monitorID, horizontalMiddleSplitKey, monitorRect.Y + monitorRect.Height / 2 + GetRandomShift(shiftRange));
+				generateSplitBorder(monitorID, horizontalBottomSplitKey, monitorRect.Y + monitorRect.Height * 2 / 3 + GetRandomShift(shiftRange));
+				generateSplitBorder(monitorID, verticalLeftSplitKey, monitorRect.X + monitorRect.Width / 3 + GetRandomShift(shiftRange));
+				generateSplitBorder(monitorID, verticalMiddleSplitKey, monitorRect.X + monitorRect.Width / 2 + GetRandomShift(shiftRange));
+				generateSplitBorder(monitorID, verticalRightSplitKey, monitorRect.X + monitorRect.Width * 2 / 3 + GetRandomShift(shiftRange));
+				//MessageBox.Show($"generateSplitBorder monitor ({monitorID}) X.{monitorRect.X} Y.{monitorRect.Y} [{monitorRect.Width}/{monitorRect.Height}] vemidsplit: {readIntKey(rightMarginKey+"_2")}");
+			}
+
+			// todo remove?
+			DateTime currentTime = DateTime.Now; // Pobranie aktualnego czasu
+			lastBordersRecalc = currentTime;
+		}
+
+		public static void generateSplitBorder(uint monitorID, string borderKey, int newValue)
+		{
+			// use for storing in settings
+			string monitorBorderkey = borderKey + "_" + monitorID.ToString();
+			BFS.ScriptSettings.WriteValue(monitorBorderkey, ""); // TODO remove
+
+			if (keyAlreadyGenerated(monitorBorderkey))
+			{
+				// ignore received new value and override with stored value
+				MessageBox.Show($"Key already generated: {monitorBorderkey}");
+				newValue = readIntKey(monitorBorderkey);
+			}
+			else
+			{
+				// save in settings
+				BFS.ScriptSettings.WriteValue(monitorBorderkey, newValue.ToString());
+			}
+
+				// try adding to bordersDict
+			if (bordersDict[monitorID].TryAdd(borderKey, newValue))
+			{
+			}
+
+			//MessageBox.Show($"generateSplitBorder ({monitorID})[{monitorBorderkey}] W:{newValue.ToString()}, R:{readIntKey(monitorBorderkey)}");
+		}
+		
+		public static void Left(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int verticalMiddleSplit = bordersDict[monitorId][verticalMiddleSplitKey];
+			int leftMargin = bordersDict[monitorId][leftMarginKey];
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+
+			if (BFS.Input.IsKeyDown(KEY_SHIFT))
+			{
+				TopLeft(windowHandle);
+			}
+			else if (BFS.Input.IsKeyDown(KEY_CTRL))
+			{
+				BottomLeft(windowHandle);
+			}
+			else // whole space horizontally when no key pressed
+			{
+				int width = verticalMiddleSplit - leftMargin;
+				int height = bottomMargin - topMargin;
+
+				// MessageBox.Show($"Moving windows to X.{leftMargin} Y.{topMargin} [{width}/{height}]");
+				BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+			}
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}
+		
+		public static void Right(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int rightMargin = bordersDict[monitorId][rightMarginKey];
+			int verticalMiddleSplit = bordersDict[monitorId][verticalMiddleSplitKey];
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+
+			// MessageBox.Show($"Right monitorID {monitorId}  verticalMiddleSplit {verticalMiddleSplit}");
+
+			if (BFS.Input.IsKeyDown(KEY_SHIFT))
+			{
+				TopRight(windowHandle);
+			}
+			else if (BFS.Input.IsKeyDown(KEY_CTRL))
+			{
+				BottomRight(windowHandle);
+			}
+			else // whole space horizontally when no key pressed
+			{
+				int width = rightMargin - verticalMiddleSplit;
+				int height = bottomMargin - topMargin;
+				// MessageBox.Show($"Moving windows to X.{verticalMiddleSplit} Y.{topMargin} [{width}/{height}]");
+				BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
+			}
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}
 				
-		// rightMarginKey
-		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(rightMarginKey))
+		public static void TopLeft(IntPtr windowHandle)
 		{
-			rightMargin = monitorRect.X + monitorRect.Width - GetRandomShift(0, shiftRange);
-			BFS.ScriptSettings.WriteValue(rightMarginKey, rightMargin.ToString());
-		}
-		else rightMargin = readIntKey(rightMarginKey);
-		
-		// horizontalTopSplitKey
-		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(horizontalTopSplitKey))
-		{
-			horizontalTopSplit = monitorRect.Y + monitorRect.Height / 3 + GetRandomShift(shiftRange);
-			BFS.ScriptSettings.WriteValue(horizontalTopSplitKey, horizontalTopSplit.ToString());
-		}
-		else horizontalTopSplit = readIntKey(horizontalTopSplitKey);
-		
-		// horizontalMiddleSplitKey
-		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(horizontalMiddleSplitKey))
-		{
-			horizontalMiddleSplit = monitorRect.Y + monitorRect.Height / 2 + GetRandomShift(shiftRange);
-			BFS.ScriptSettings.WriteValue(horizontalMiddleSplitKey, horizontalMiddleSplit.ToString());
-		}
-		else horizontalMiddleSplit = readIntKey(horizontalMiddleSplitKey);
-		
-		// horizontalBottomSplitKey
-		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(horizontalBottomSplitKey))
-		{
-			horizontalBottomSplit = monitorRect.Y + monitorRect.Height * 2 / 3 + GetRandomShift(shiftRange);
-			BFS.ScriptSettings.WriteValue(horizontalBottomSplitKey, horizontalBottomSplit.ToString());
-		}
-		else horizontalBottomSplit = readIntKey(horizontalBottomSplitKey);
+			uint monitorId = getMouseMonitorID();
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int leftMargin = bordersDict[monitorId][leftMarginKey];
+			int verticalMiddleSplit = bordersDict[monitorId][verticalMiddleSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
 
-		// verticalLeftSplitKey
-		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(verticalLeftSplitKey))
-		{
-			verticalLeftSplit = monitorRect.X + monitorRect.Width / 3 + GetRandomShift(shiftRange);
-			BFS.ScriptSettings.WriteValue(verticalLeftSplitKey, verticalLeftSplit.ToString());
-		}		
-		else verticalLeftSplit = readIntKey(verticalLeftSplitKey);
-
-		// verticalMiddleSplitKey
-		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(verticalMiddleSplitKey))
-		{
-			verticalMiddleSplit = monitorRect.X + monitorRect.Width / 2 + GetRandomShift(shiftRange);
-			BFS.ScriptSettings.WriteValue(verticalMiddleSplitKey, verticalMiddleSplit.ToString());
-		}
-		else verticalMiddleSplit = readIntKey(verticalMiddleSplitKey);
-
-		// verticaRightSplitKey
-		if (timerBorderRecalculateExpired() || !keyAlreadyGenerated(verticalRightSplitKey))
-		{
-			verticalRightSplit = monitorRect.X + monitorRect.Width * 2 / 3 + GetRandomShift(shiftRange);
-			BFS.ScriptSettings.WriteValue(verticalRightSplitKey, verticalRightSplit.ToString());
-		}
-		else verticalRightSplit = readIntKey(verticalRightSplitKey);
-		
-		DateTime currentTime = DateTime.Now; // Pobranie aktualnego czasu
-		lastBordersRecalc = currentTime;
-		
-		// display values for debug
-		// MessageBox.Show("topMargin " + topMargin + "\tbottomMargin " + bottomMargin +
-		                // "\nleftMargin " + leftMargin + "\trightMargin " + rightMargin + 
-		                // "\nhorTopSplit " + horizontalTopSplit + "\thorMiddleSplit " + horizontalMiddleSplit +"\thorBottomKey " + horizontalBottomSplit +
-		                // "\nverLeftSplit " + verticalLeftSplit + "\tverMiddleSplit " + verticalMiddleSplit +"\tverRightKey " + verticalRightSplit);
-	}
-	
-	public static void Left(IntPtr windowHandle)
-	{
-		generateSplitBorders(windowHandle);
-
-		if (BFS.Input.IsKeyDown(KEY_SHIFT))
-        {
-			TopLeft(windowHandle);
-        }
-		else if (BFS.Input.IsKeyDown(KEY_CTRL))
-		{
-			BottomLeft(windowHandle);
-		}
-		else // whole space horizontally when no key pressed
-		{
 			int width = verticalMiddleSplit - leftMargin;
-			int height = bottomMargin - topMargin;
+			int height = horizontalMiddleSplit - topMargin;
 			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
-		if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-	}
-	
-	public static void Right(IntPtr windowHandle)
-	{
-		generateSplitBorders(windowHandle);
+						
+		public static void TopRight(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int rightMargin = bordersDict[monitorId][rightMarginKey];
+			int verticalMiddleSplit = bordersDict[monitorId][verticalMiddleSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
 
-		if (BFS.Input.IsKeyDown(KEY_SHIFT))
-        {
-			TopRight(windowHandle);
-        }
-		else if (BFS.Input.IsKeyDown(KEY_CTRL))
-		{
-			BottomRight(windowHandle);
-		}
-		else // whole space horizontally when no key pressed
-		{
 			int width = rightMargin - verticalMiddleSplit;
-			int height = bottomMargin - topMargin;
+			int height = horizontalMiddleSplit - topMargin;
 			BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
-		if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-	}
+					
+		public static void BottomLeft(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int leftMargin = bordersDict[monitorId][leftMarginKey];
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			int verticalMiddleSplit = bordersDict[monitorId][verticalMiddleSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+
+			int width = verticalMiddleSplit - leftMargin;
+			int height = bottomMargin - horizontalMiddleSplit;
+			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}
+						
+		public static void BottomRight(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int rightMargin = bordersDict[monitorId][rightMarginKey];
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			int verticalMiddleSplit = bordersDict[monitorId][verticalMiddleSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+
+			int width = rightMargin - verticalMiddleSplit;
+			int height = bottomMargin - horizontalMiddleSplit;
+			BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, horizontalMiddleSplit, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}
+		
+		public static void TopLeftmost(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int leftMargin = bordersDict[monitorId][leftMarginKey];
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+
+			int width = verticalLeftSplit - leftMargin;
+			int height = horizontalMiddleSplit - topMargin;
+			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}
+		
+		public static void TopMiddle(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
+			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+
+			int width = verticalRightSplit - verticalLeftSplit;
+			int height = horizontalMiddleSplit - topMargin;
+			BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, topMargin, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}	
 			
-	public static void TopLeft(IntPtr windowHandle)
-	{
-		int width = verticalMiddleSplit - leftMargin;
-		int height = horizontalMiddleSplit - topMargin;
-		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
-		if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-	}
-					
-	public static void TopRight(IntPtr windowHandle)
-	{
-		int width = rightMargin - verticalMiddleSplit;
-		int height = horizontalMiddleSplit - topMargin;
-		BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
-		if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-	}
-				
-	public static void BottomLeft(IntPtr windowHandle)
-	{
-		int width = verticalMiddleSplit - leftMargin;
-		int height = bottomMargin - horizontalMiddleSplit;
-		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
-		if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-	}
-					
-	public static void BottomRight(IntPtr windowHandle)
-	{
-		int width = rightMargin - verticalMiddleSplit;
-		int height = bottomMargin - horizontalMiddleSplit;
-		BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, horizontalMiddleSplit, width, height);
-		if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-	}
-	
-	public static void TopLeftmost(IntPtr windowHandle)
-	{
-		int width = verticalLeftSplit - leftMargin;
-		int height = horizontalMiddleSplit - topMargin;
-		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
-		if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-	}
-	
-	public static void TopMiddle(IntPtr windowHandle)
-	{
-		int width = verticalRightSplit - verticalLeftSplit;
-		int height = horizontalMiddleSplit - topMargin;
-		BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, topMargin, width, height);
-		if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-	}	
+		public static void TopRightmost(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int rightMargin = bordersDict[monitorId][rightMarginKey];
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+
+			int width = rightMargin - verticalRightSplit;
+			int height = horizontalMiddleSplit - topMargin;
+			BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, topMargin, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}	
 		
-	public static void TopRightmost(IntPtr windowHandle)
-	{
-		int width = rightMargin - verticalRightSplit;
-		int height = horizontalMiddleSplit - topMargin;
-		BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, topMargin, width, height);
-		if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-	}	
-	
-	public static void BottomLeftmost(IntPtr windowHandle)
-	{
-		int width = verticalLeftSplit - leftMargin;
-		int height = bottomMargin - horizontalMiddleSplit;
-		BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
-		if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-	}
-	
-	public static void BottomMiddle(IntPtr windowHandle)
-	{
-		int width = verticalRightSplit - verticalLeftSplit;
-		int height = bottomMargin - horizontalMiddleSplit;
-		BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, horizontalMiddleSplit, width, height);
-		if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-	}	
+		public static void BottomLeftmost(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int leftMargin = bordersDict[monitorId][leftMarginKey];
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			
+			int width = verticalLeftSplit - leftMargin;
+			int height = bottomMargin - horizontalMiddleSplit;
+			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}
 		
-	public static void BottomRightmost(IntPtr windowHandle)
-	{
-		int width = rightMargin - verticalRightSplit;
-		int height = bottomMargin - horizontalMiddleSplit;
-		BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, horizontalMiddleSplit, width, height);
-		if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-	}
-	
-
-	
-	public static void SixSplitLeft(IntPtr windowHandle)
-	{
-		generateSplitBorders(windowHandle);
-
-		if (BFS.Input.IsKeyDown(KEY_SHIFT))
-        {
-			TopLeftmost(windowHandle);
-        }
-		else
+		public static void BottomMiddle(IntPtr windowHandle)
 		{
-			BottomLeftmost(windowHandle);
-		}
-	}
-	
-	public static void SixSplitMiddle(IntPtr windowHandle)
-	{
-		generateSplitBorders(windowHandle);
+			uint monitorId = getMouseMonitorID();
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
+			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
 
-		if (BFS.Input.IsKeyDown(KEY_SHIFT))
-        {
-			TopMiddle(windowHandle);
-        }
-		else
+			int width = verticalRightSplit - verticalLeftSplit;
+			int height = bottomMargin - horizontalMiddleSplit;
+			BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, horizontalMiddleSplit, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}	
+			
+		public static void BottomRightmost(IntPtr windowHandle)
 		{
-			BottomMiddle(windowHandle);
+			uint monitorId = getMouseMonitorID();
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			int rightMargin = bordersDict[monitorId][rightMarginKey];
+			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			
+			int width = rightMargin - verticalRightSplit;
+			int height = bottomMargin - horizontalMiddleSplit;
+			BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, horizontalMiddleSplit, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
-	}
-
-	public static void SixSplitRight(IntPtr windowHandle)
-	{
-		generateSplitBorders(windowHandle);
-
-		if (BFS.Input.IsKeyDown(KEY_SHIFT))
-        {
-			TopRightmost(windowHandle);
-        }
-		else
-		{
-			BottomRightmost(windowHandle);
-		}
-	}
-
-	public static void NineSplitLeft(IntPtr windowHandle)
-	{
-		NineSplit(windowHandle, WindowHorizontalPosition.Left);
-	}
-	public static void NineSplitMiddle(IntPtr windowHandle)
-	{
-		NineSplit(windowHandle, WindowHorizontalPosition.Middle);
-	}
-	public static void NineSplitRight(IntPtr windowHandle)
-	{
-		NineSplit(windowHandle, WindowHorizontalPosition.Right);
-	}
-	
-	public static void NineSplit(IntPtr windowHandle, WindowHorizontalPosition position)
-	{
-		generateSplitBorders(windowHandle);
-
-		int height = 0, width = 0;
-		int x = 0, y = 0;
-
-		switch (position)
-		{
-			case WindowHorizontalPosition.Left:
-				width = verticalLeftSplit - leftMargin;
-				x = leftMargin;
-				break;
-			case WindowHorizontalPosition.Middle:
-				width = verticalRightSplit - verticalLeftSplit;
-				x = verticalLeftSplit;
-				break;
-			case WindowHorizontalPosition.Right:
-				width = rightMargin - verticalRightSplit;
-				x = verticalRightSplit;
-				break;
-			default:
-				MessageBox.Show("No switch for position " + position.ToString() + " in function NineSplit()");
-				break;
-		}
-
-		if(BFS.Input.IsKeyDown(KEY_SHIFT) && !BFS.Input.IsKeyDown(KEY_CTRL)) // top only
-		{
-			height = horizontalTopSplit - topMargin;
-			y = topMargin;
-		}
-		else if(!BFS.Input.IsKeyDown(KEY_SHIFT) && BFS.Input.IsKeyDown(KEY_CTRL)) // bottom only
-		{
-			height = bottomMargin - horizontalBottomSplit;
-			y = horizontalBottomSplit;
-		}
-		else if (BFS.Input.IsKeyDown(KEY_SHIFT) && BFS.Input.IsKeyDown(KEY_CTRL)) // both up and down - certer
-		{
-			height = horizontalBottomSplit - horizontalTopSplit;
-			y = horizontalTopSplit;
-		}
-		else // no key modifier - full height
-		{
-			height = bottomMargin - topMargin;
-			y = topMargin;
-		}
-
-		BFS.Window.SetSizeAndLocation(windowHandle, x, y, width, height);
-		if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-	}
-	
-	public static bool keyAlreadyGenerated(string key)
-	{
-		return !string.IsNullOrEmpty(BFS.ScriptSettings.ReadValue(key));
-	}
-	
-	public static int readIntKey(string key)
-	{
-		return int.Parse(BFS.ScriptSettings.ReadValue(key));
-	}
-	
-	public static bool timerBorderRecalculateExpired()
-	{
-		DateTime currentTime = DateTime.Now; // Pobranie aktualnego czasu
-		TimeSpan elapsedTime = currentTime - lastBordersRecalc; // Obliczenie czasu, który minął
-
-		return (elapsedTime.TotalSeconds >= 15);
-	}
-	
-	public static Rectangle getMouseMonitorBounds()
-	{
-		// Get the mouse position
-		Point mousePosition = new Point(BFS.Input.GetMousePositionX(), BFS.Input.GetMousePositionY());
 		
-		// Get an array of the bounds for all monitors ignoring splits
-        Rectangle[] monitorBoundsAll = BFS.Monitor.GetMonitorBoundsNoSplits();
+
 		
-		// Loop through the array of bounds and find monitor in which mouse in located
-		foreach (Rectangle monitorBounds in monitorBoundsAll)
+		public static void SixSplitLeft(IntPtr windowHandle)
 		{
-            if (monitorBounds.Contains(mousePosition))
-            {
-				// string pointAsString = string.Format("X={0},Y={1}", mousePosition.X, mousePosition.Y);
-				// MessageBox.Show("mousePosition " + pointAsString +
-				// "\nmonitorBounds.Width " + monitorBounds.Width + "\tmonitorBounds.Height " +monitorBounds.Height + 
-				// "\nmonitorBounds.X " + monitorBounds.X + "\tmonitorBounds.Y " + monitorBounds.Y);
-                return monitorBounds;
-            }
+			if (BFS.Input.IsKeyDown(KEY_SHIFT))
+			{
+				TopLeftmost(windowHandle);
+			}
+			else
+			{
+				BottomLeftmost(windowHandle);
+			}
 		}
-		return default; 
-	}
-	
-	public static Rectangle getMonitorByPoint(Point point,  Rectangle[] monitorBoundsAll)
-	{
-		// Loop through the array of bounds and find monitor of current window
-		foreach (Rectangle monitorBounds in monitorBoundsAll)
-		{
-            if (monitorBounds.Contains(point))
-            {
-				//MessageBox.Show($"Found monitor top left [X: {monitorBounds.X}, Y: {monitorBounds.Y}, Width: {monitorBounds.Width}, Height: {monitorBounds.Height}]");
-                return monitorBounds;
-            }
-		}
-		return default;
-	}
-
-	public static Rectangle getCurrentWindowMonitorBounds(IntPtr windowHandle)
-	{
-		Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
-
-		// Get an array of the bounds for all monitors ignoring splits
-        Rectangle[] monitorBoundsAll = BFS.Monitor.GetMonitorBoundsNoSplits();
 		
-		// Find monitor containing windows TOP LEFT corner
-		Point windowPosition = new Point(windowRect.X, windowRect.Y);
-		Rectangle monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
-		if (monitor != Rectangle.Empty) 
-			return monitor;
-		string windowID = BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle);
-		MessageBox.Show($"Did not find monitor for window TOP LEFT {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
+		public static void SixSplitMiddle(IntPtr windowHandle)
+		{
+			if (BFS.Input.IsKeyDown(KEY_SHIFT))
+			{
+				TopMiddle(windowHandle);
+			}
+			else
+			{
+				BottomMiddle(windowHandle);
+			}
+		}
 
-		// find monitor for TOP RIGHT window conrner
-		windowPosition= new Point(windowRect.X + windowRect.Width, windowRect.Y);
-		monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
-		if (monitor != Rectangle.Empty) 
-			return monitor;
-		MessageBox.Show($"Did not find monitor for window TOP RIGHT {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
+		public static void SixSplitRight(IntPtr windowHandle)
+		{
+			if (BFS.Input.IsKeyDown(KEY_SHIFT))
+			{
+				TopRightmost(windowHandle);
+			}
+			else
+			{
+				BottomRightmost(windowHandle);
+			}
+		}
 
-		// find monitor for CENTER point of window
-		windowPosition = new Point(windowRect.X + windowRect.Width / 2, windowRect.Y + windowRect.Height / 2);
-		monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
-		if (monitor != Rectangle.Empty) 
-			return monitor;
-		MessageBox.Show($"Did not find monitor for window CENTER {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
+		public static void NineSplitLeft(IntPtr windowHandle)
+		{
+			NineSplit(windowHandle, WindowHorizontalPosition.Left);
+		}
+		public static void NineSplitMiddle(IntPtr windowHandle)
+		{
+			NineSplit(windowHandle, WindowHorizontalPosition.Middle);
+		}
+		public static void NineSplitRight(IntPtr windowHandle)
+		{
+			NineSplit(windowHandle, WindowHorizontalPosition.Right);
+		}
+		
+		public static void NineSplit(IntPtr windowHandle, WindowHorizontalPosition position)
+		{
+			uint monitorId = getMouseMonitorID();
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			int leftMargin = bordersDict[monitorId][leftMarginKey];
+			int rightMargin = bordersDict[monitorId][rightMarginKey];
+			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
+			// int verticalMiddleSplit = bordersDict[monitorId][verticalMiddleSplitKey];
+			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
+			int horizontalTopSplit = bordersDict[monitorId][horizontalTopSplitKey];
+			int horizontalBottomSplit = bordersDict[monitorId][horizontalBottomSplitKey];
 
-		// find monitor for BOTTOM LEFT window conrner
-		windowPosition= new Point(windowRect.X, windowRect.Y + windowRect.Height);
-		monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
-		if (monitor != Rectangle.Empty) 
-			return monitor;
-		MessageBox.Show($"Did not find monitor for window BOTTOM LEFT {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
+			int height = 0, width = 0;
+			int x = 0, y = 0;
 
-		// find monitor for BOTTOM RIGHT window conrner
-		windowPosition= new Point(windowRect.X + windowRect.Width, windowRect.Y + windowRect.Height);
-		monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
-		if (monitor != Rectangle.Empty) 
-			return monitor;
-		MessageBox.Show($"Did not find monitor for window BOTTOM RIGHT {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
+			switch (position)
+			{
+				case WindowHorizontalPosition.Left:
+					width = verticalLeftSplit - leftMargin;
+					x = leftMargin;
+					break;
+				case WindowHorizontalPosition.Middle:
+					width = verticalRightSplit - verticalLeftSplit;
+					x = verticalLeftSplit;
+					break;
+				case WindowHorizontalPosition.Right:
+					width = rightMargin - verticalRightSplit;
+					x = verticalRightSplit;
+					break;
+				default:
+					MessageBox.Show("No switch for position " + position.ToString() + " in function NineSplit()");
+					break;
+			}
 
-		MessageBox.Show($"Did not find ANY monitor for window {windowID} [X {windowRect.X}, Y {windowRect.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
-		return default; 
+			if(BFS.Input.IsKeyDown(KEY_SHIFT) && !BFS.Input.IsKeyDown(KEY_CTRL)) // top only
+			{
+				height = horizontalTopSplit - topMargin;
+				y = topMargin;
+			}
+			else if(!BFS.Input.IsKeyDown(KEY_SHIFT) && BFS.Input.IsKeyDown(KEY_CTRL)) // bottom only
+			{
+				height = bottomMargin - horizontalBottomSplit;
+				y = horizontalBottomSplit;
+			}
+			else if (BFS.Input.IsKeyDown(KEY_SHIFT) && BFS.Input.IsKeyDown(KEY_CTRL)) // both up and down - certer
+			{
+				height = horizontalBottomSplit - horizontalTopSplit;
+				y = horizontalTopSplit;
+			}
+			else // no key modifier - full height
+			{
+				height = bottomMargin - topMargin;
+				y = topMargin;
+			}
+
+			BFS.Window.SetSizeAndLocation(windowHandle, x, y, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}
+		
+		public static bool keyAlreadyGenerated(string key)
+		{
+			return !string.IsNullOrEmpty(BFS.ScriptSettings.ReadValue(key));
+		}
+		
+		public static int readIntKey(string key)
+		{
+			return int.Parse(BFS.ScriptSettings.ReadValue(key));
+		}
+		
+		public static bool timerBorderRecalculateExpired()
+		{
+			DateTime currentTime = DateTime.Now; // Pobranie aktualnego czasu
+			TimeSpan elapsedTime = currentTime - lastBordersRecalc; // Obliczenie czasu, który minął
+
+			// return (elapsedTime.TotalSeconds >= 15);
+			return false;
+		}
+		
+		public static Rectangle getMouseMonitorBounds()
+		{
+			// todo BFS.Monitor.GetMonitorBoundsByMouseCursor???
+			// Get the mouse position
+			Point mousePosition = new Point(BFS.Input.GetMousePositionX(), BFS.Input.GetMousePositionY());
+			
+			// Get an array of the bounds for all monitors ignoring splits
+			Rectangle[] monitorBoundsAll = BFS.Monitor.GetMonitorBoundsNoSplits();
+			
+			// Loop through the array of bounds and find monitor in which mouse in located
+			foreach (Rectangle monitorBounds in monitorBoundsAll)
+			{
+				if (monitorBounds.Contains(mousePosition))
+				{
+					return monitorBounds;
+				}
+			}
+			return default; 
+		}
+		
+		public static uint getMouseMonitorID()
+		{
+			// Get the mouse position
+			Point mousePosition = new Point(BFS.Input.GetMousePositionX(), BFS.Input.GetMousePositionY());
+			
+			// Get an array of the bounds for all monitors ignoring splits
+			Rectangle[] monitorBoundsAll = BFS.Monitor.GetMonitorBoundsNoSplits();
+			
+			// Loop through the array of bounds and find monitor in which mouse in located
+			foreach (Rectangle monitorBounds in monitorBoundsAll)
+			{
+				if (monitorBounds.Contains(mousePosition))
+				{
+					uint id = BFS.Monitor.GetMonitorIDByRect(monitorBounds);
+					// MessageBox.Show($"Found monitor for mouse - ID:{id} [X: {monitorBounds.X}, Y: {monitorBounds.Y}, Width: {monitorBounds.Width}, Height: {monitorBounds.Height}]");
+
+					return id;
+				}
+			}
+			return default; 
+		}
+		
+		public static Rectangle getMonitorByPoint(Point point,  Rectangle[] monitorBoundsAll)
+		{
+			// Loop through the array of bounds and find monitor of current window
+			foreach (Rectangle monitorBounds in monitorBoundsAll)
+			{
+				if (monitorBounds.Contains(point))
+				{
+					//MessageBox.Show($"Found monitor top left [X: {monitorBounds.X}, Y: {monitorBounds.Y}, Width: {monitorBounds.Width}, Height: {monitorBounds.Height}]");
+					return monitorBounds;
+				}
+			}
+			return default;
+		}
+
+		public static Rectangle getCurrentWindowMonitorBounds(IntPtr windowHandle)
+		{
+			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+
+			// Get an array of the bounds for all monitors ignoring splits
+			Rectangle[] monitorBoundsAll = BFS.Monitor.GetMonitorBoundsNoSplits();
+			
+			// Find monitor containing windows TOP LEFT corner
+			Point windowPosition = new Point(windowRect.X, windowRect.Y);
+			Rectangle monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
+			if (monitor != Rectangle.Empty) 
+				return monitor;
+			string windowID = BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle);
+			MessageBox.Show($"Did not find monitor for window TOP LEFT {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
+
+			// find monitor for TOP RIGHT window conrner
+			windowPosition= new Point(windowRect.X + windowRect.Width, windowRect.Y);
+			monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
+			if (monitor != Rectangle.Empty) 
+				return monitor;
+			MessageBox.Show($"Did not find monitor for window TOP RIGHT {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
+
+			// find monitor for CENTER point of window
+			windowPosition = new Point(windowRect.X + windowRect.Width / 2, windowRect.Y + windowRect.Height / 2);
+			monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
+			if (monitor != Rectangle.Empty) 
+				return monitor;
+			MessageBox.Show($"Did not find monitor for window CENTER {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
+
+			// find monitor for BOTTOM LEFT window conrner
+			windowPosition= new Point(windowRect.X, windowRect.Y + windowRect.Height);
+			monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
+			if (monitor != Rectangle.Empty) 
+				return monitor;
+			MessageBox.Show($"Did not find monitor for window BOTTOM LEFT {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
+
+			// find monitor for BOTTOM RIGHT window conrner
+			windowPosition= new Point(windowRect.X + windowRect.Width, windowRect.Y + windowRect.Height);
+			monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
+			if (monitor != Rectangle.Empty) 
+				return monitor;
+			MessageBox.Show($"Did not find monitor for window BOTTOM RIGHT {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
+
+			MessageBox.Show($"Did not find ANY monitor for window {windowID} [X {windowRect.X}, Y {windowRect.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
+			return default; 
+		}
+
+		public static string MergeKeyCodes(params string[] keyCodes)
+		{
+			StringBuilder sb = new StringBuilder();
+
+			for (int i = 0; i < keyCodes.Length; i++)
+			{
+				sb.Append(keyCodes[i]);
+
+				if (i < keyCodes.Length - 1)
+				{
+					sb.Append(";");
+				}
+			}
+
+			return sb.ToString();
+		}
 	}
-
-	public static string MergeKeyCodes(params string[] keyCodes)
-    {
-        StringBuilder sb = new StringBuilder();
-
-        for (int i = 0; i < keyCodes.Length; i++)
-        {
-            sb.Append(keyCodes[i]);
-
-            if (i < keyCodes.Length - 1)
-            {
-                sb.Append(";");
-            }
-        }
-
-        return sb.ToString();
-    }
-}
