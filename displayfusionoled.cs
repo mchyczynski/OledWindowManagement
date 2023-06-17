@@ -30,6 +30,7 @@ public static class DisplayFusionFunction
 	public static string verticalMiddleSplitKey = "verticalMiddleSplitKey";
 	public static string verticalLeftSplitKey = "verticalLeftSplitKey";
 	public static string verticalRightSplitKey = "verticalRightSplitKey";
+	public static string moveFlagKey = "moveFlagKey";
 
 	public static int topMargin = 0;
 	public static int bottomMargin = 0;
@@ -98,7 +99,7 @@ public static class DisplayFusionFunction
 				{{ "Pink", "Maroon", "--- Cancel ---" }}
 			};
 
-		//create a new ContextMenuStrip to show the items
+		// create a new ContextMenuStrip to show the items
 		using(ContextMenuStrip menu = new ContextMenuStrip())
 		{
 			//dont show the padding on the left of the menu
@@ -129,14 +130,13 @@ public static class DisplayFusionFunction
 		}
 	}
 	
-	//this function will get the text of the item and try to run it as a DisplayFusion function
-	//"--- Cancel ---", change it to what you used in MenuEntries-List
 	private static void MenuItem_Click(object sender, EventArgs e, IntPtr windowHandle)
 	{
 		
 		ToolStripItem item = sender as ToolStripItem;
 		if (item == null || item.Text == "--- Cancel ---")
 		{
+			BFS.ScriptSettings.WriteValue(moveFlagKey, false.ToString());
 			enableWindowsPositionTimedShift = false;
 			return;
 		}
@@ -147,7 +147,6 @@ public static class DisplayFusionFunction
 
 	private static void RunMy(string functionName, IntPtr windowHandle)
 	{
-		//MessageBox.Show("To jest powiadomienie RunMy.", "Tytuł powiadomienia", MessageBoxButtons.OK);
 		// Get type, that contains function
         Type type = typeof(DisplayFusionFunction); 
         
@@ -164,7 +163,6 @@ public static class DisplayFusionFunction
         }
 	}
 
-public static string moveFlagKey = "moveFlagKey";
 	public static void StartMovingWindows(IntPtr windowHandle)
 	{
 		// MessageBox.Show("StartMovingWindows start" + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
@@ -174,7 +172,7 @@ public static string moveFlagKey = "moveFlagKey";
 		if(!alreadyMovingWindows)
 		{
 			MessageBox.Show("Starting MoveWindows" + BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle));
-			BFS.ScriptSettings.WriteValue(moveFlagKey, true.ToString());
+			//BFS.ScriptSettings.WriteValue(moveFlagKey, true.ToString());
 			MoveWindows();
 		}
 		else
@@ -190,10 +188,8 @@ public static string moveFlagKey = "moveFlagKey";
 		int horDirection = -1, verDirection = -1;
 		int finalHorShift = horizontalShift * horDirection;
 		int finalVerShift = verticalShift * verDirection;
-		// int horizontalShift = -1, verticalShift = -1;
 
 		IntPtr[] windowsHandlesAll = BFS.Window.GetVisibleAndMinimizedWindowHandles();
-		// IntPtr[] windowsHandlesAll = BFS.Window.GetAllWindowHandles();
 
 		// int i = 1;
 		// foreach(IntPtr windowHandle in windowsHandlesAll)
@@ -218,67 +214,65 @@ public static string moveFlagKey = "moveFlagKey";
 
 			foreach(IntPtr windowHandle in windowsHandlesAll)
 			{
-					string name = BFS.Window.GetText(windowHandle);
+				string name = BFS.Window.GetText(windowHandle);
 
-				if (!BFS.Window.IsMinimized(windowHandle) && // dont move minimized windows because it wil un-minimize them
-					!BFS.Window.IsMaximized(windowHandle) &&  // ignore maximized windows
-					(name != "" && name != "Program Manager") ) // fake windows??
+				if (BFS.Window.IsMinimized(windowHandle) || // dont move minimized windows because it wil un-minimize them
+					BFS.Window.IsMaximized(windowHandle) ||  // ignore maximized windows
+					(String.IsNullOrEmpty(name) || name == "Program Manager") ) // ignore fake windows
 				{
-					MessageBox.Show("Processing window" + BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle));
-					Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
-					Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
-
-					if(monitorRect.Width == 0 || monitorRect.Height == 0)
-					{
-						MessageBox.Show("STOP move no monitor");
-						enableWindowsPositionTimedShift = false;
-						break;
-					}
-
-					// check if new position will be outside of current monitor and switch shift direction
-					if (windowRect.X+finalHorShift <= monitorRect.X) 
-					{
-						MessageBox.Show(String.Format("windowRect.X+horizontalShift {0} <= monitorRect.X {1}", windowRect.X+finalHorShift, monitorRect.X));
-						horDirection = 1;
-					}
-
-					if (windowRect.X+finalHorShift + windowRect.Width >= monitorRect.X + monitorRect.Width)
-					{
-						MessageBox.Show(String.Format("windowRect.X+horizontalShift {0} + windowRect.Width {1} ({2}) >= monitorRect.X {3} + monitorRect.Width {4} ({5})", 
-														windowRect.X+finalHorShift,
-														windowRect.Width, 
-														(windowRect.X+finalHorShift + windowRect.Width), 
-														monitorRect.X, 
-														monitorRect.Width, 
-														(monitorRect.X + monitorRect.Width)));
-						
-						horDirection = -1;
-					}
-					
-					if (windowRect.Y+finalVerShift <= monitorRect.Y)
-					{				
-						MessageBox.Show(String.Format("windowRect.Y+verticalShift {0} <= monitorRect.Y {1}", windowRect.Y+finalVerShift, monitorRect.Y));
-						verDirection = 1;
-					}
-					
-					if(windowRect.Y+finalVerShift + windowRect.Height >= monitorRect.Y + monitorRect.Height)
-					{
-						MessageBox.Show(String.Format("windowRect.Y+verticalShift {0} + windowRect.Height {1} ({2}) >= monitorRect.Y {3} + monitorRect.Height {4} ({5})", 
-														windowRect.Y+finalVerShift, 
-														windowRect.Height, 
-														(windowRect.Y+finalVerShift + windowRect.Height), 
-														monitorRect.Y, 
-														monitorRect.Height, 
-														(monitorRect.Y + monitorRect.Height)));
-						verDirection = -1;
-					}
-
-					finalHorShift = horizontalShift * horDirection;
-					finalVerShift = verticalShift * verDirection;
-					BFS.Window.SetSizeAndLocation(windowHandle, windowRect.X+finalHorShift, windowRect.Y+finalVerShift, windowRect.Width, windowRect.Height );
-					
-					// MessageBox.Show("Moved window " + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
+					continue;
 				}
+
+				MessageBox.Show("Processing window" + BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle));
+				Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
+				Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+
+				if(monitorRect.Width == 0 || monitorRect.Height == 0)
+				{
+					MessageBox.Show("STOP move no monitor");
+					enableWindowsPositionTimedShift = false;
+					break;
+				}
+
+				// check if new position will be outside of current monitor and switch shift direction
+				// would hit monitor LEFT?
+				if (windowRect.X+finalHorShift <= monitorRect.X) 
+				{
+					MessageBox.Show($"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} ({windowRect.X+finalHorShift}) <= monitorRect.X {monitorRect.X}");
+					horDirection = 1;
+				}
+
+				// would hit monitor RIGHT?
+				if (windowRect.X+finalHorShift + windowRect.Width >= monitorRect.X + monitorRect.Width)
+				{
+					MessageBox.Show($@"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} +windowRect.Width {windowRect.Width} ({windowRect.X+finalHorShift+windowRect.Width}) 
+									>=
+									monitorRect.X {monitorRect.X} + monitorRect.Width {monitorRect.Width} ({monitorRect.X+monitorRect.Width})");
+					horDirection = -1;
+				}
+				
+				// would hit monitor TOP?
+				if (windowRect.Y+finalVerShift <= monitorRect.Y)
+				{				
+					MessageBox.Show($"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} ({windowRect.Y+finalVerShift}) <= monitorRect.Y {monitorRect.Y}");
+					verDirection = 1;
+				}
+				
+				// would hit monitor BOTTOM?
+				if(windowRect.Y+finalVerShift + windowRect.Height >= monitorRect.Y + monitorRect.Height)
+				{
+					MessageBox.Show($@"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} +windowRect.Height {windowRect.Height} ({windowRect.Y+finalVerShift+windowRect.Height}) 
+									>= 
+									monitorRect.Y {monitorRect.Y} + monitorRect.Height {monitorRect.Height} ({monitorRect.Y+monitorRect.Height})");
+					verDirection = -1;
+				}
+
+				// calculate final shift and move window
+				finalHorShift = horizontalShift * horDirection;
+				finalVerShift = verticalShift * verDirection;
+				BFS.Window.SetLocation(windowHandle, windowRect.X+finalHorShift, windowRect.Y+finalVerShift);
+				
+				// MessageBox.Show("Moved window " + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
 			}
 		}
 
