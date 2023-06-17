@@ -89,7 +89,7 @@
 					
 					// {{ "PaleGreen", "Black", "TopLeft" }},
 					
-					// {{ "DodgerBlue", "Black", "TopLeftmost" }},
+					// {{ "DodgerBlue", "Black", "LeftmostTop" }},
 					
 					{{ "DodgerBlue", "Black", "SixSplitLeft" }},
 					{{ "DodgerBlue", "Black", "SixSplitMiddle" }},
@@ -527,6 +527,8 @@
 			}
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
+
+		// ************* 4 split *************
 				
 		public static void TopLeft(IntPtr windowHandle)
 		{
@@ -584,7 +586,9 @@
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
 		
-		public static void TopLeftmost(IntPtr windowHandle)
+		// ************* 6 split *************
+
+		public static void LeftmostTop(IntPtr windowHandle)
 		{
 			uint monitorId = getMouseMonitorID();
 			int leftMargin = bordersDict[monitorId][leftMarginKey];
@@ -598,7 +602,50 @@
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
 		
-		public static void TopMiddle(IntPtr windowHandle)
+		public static void LeftmostBottom(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int leftMargin = bordersDict[monitorId][leftMarginKey];
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			
+			int width = verticalLeftSplit - leftMargin;
+			int height = bottomMargin - horizontalMiddleSplit;
+			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}
+					
+		public static void LeftmostCenter(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int leftMargin = bordersDict[monitorId][leftMarginKey];
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+
+			int width = verticalLeftSplit - leftMargin;
+			int height = (bottomMargin - topMargin) / 2;
+			int y = horizontalMiddleSplit - height / 2;
+			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, y, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}
+		public static void LeftmostFullHeight(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int leftMargin = bordersDict[monitorId][leftMarginKey];
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+
+			int width = verticalLeftSplit - leftMargin;
+			int height = bottomMargin - topMargin;
+			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}
+		
+		public static void MiddleTop(IntPtr windowHandle)
 		{
 			uint monitorId = getMouseMonitorID();
 			int topMargin = bordersDict[monitorId][topMarginKey];
@@ -612,35 +659,7 @@
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}	
 			
-		public static void TopRightmost(IntPtr windowHandle)
-		{
-			uint monitorId = getMouseMonitorID();
-			int rightMargin = bordersDict[monitorId][rightMarginKey];
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
-
-			int width = rightMargin - verticalRightSplit;
-			int height = horizontalMiddleSplit - topMargin;
-			BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, topMargin, width, height);
-			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-		}	
-		
-		public static void BottomLeftmost(IntPtr windowHandle)
-		{
-			uint monitorId = getMouseMonitorID();
-			int leftMargin = bordersDict[monitorId][leftMarginKey];
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
-			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
-			
-			int width = verticalLeftSplit - leftMargin;
-			int height = bottomMargin - horizontalMiddleSplit;
-			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
-			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
-		}
-		
-		public static void BottomMiddle(IntPtr windowHandle)
+		public static void MiddleBottom(IntPtr windowHandle)
 		{
 			uint monitorId = getMouseMonitorID();
 			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
@@ -654,7 +673,51 @@
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}	
 			
-		public static void BottomRightmost(IntPtr windowHandle)
+		public static void MiddleCenter(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
+			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+
+			int width = verticalRightSplit - verticalLeftSplit;
+			int height = (bottomMargin - topMargin) / 2;
+			int y = horizontalMiddleSplit - height / 2;
+			BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, y, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}	
+
+		public static void MiddleFullHeight(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
+			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+
+			int width = verticalRightSplit - verticalLeftSplit;
+			int height = bottomMargin - topMargin;
+			BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, topMargin, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}	
+			
+		public static void RightmostTop(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int rightMargin = bordersDict[monitorId][rightMarginKey];
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+
+			int width = rightMargin - verticalRightSplit;
+			int height = horizontalMiddleSplit - topMargin;
+			BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, topMargin, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}	
+						
+		public static void RightmostBottom(IntPtr windowHandle)
 		{
 			uint monitorId = getMouseMonitorID();
 			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
@@ -667,42 +730,97 @@
 			BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, horizontalMiddleSplit, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
+
+		public static void RightmostCenter(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int rightMargin = bordersDict[monitorId][rightMarginKey];
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+
+			int width = rightMargin - verticalRightSplit;
+			int height = (bottomMargin - topMargin) / 2;
+			int y = horizontalMiddleSplit - height / 2;
+			BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, y, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}	
+			
+		public static void RightmostFullHeight(IntPtr windowHandle)
+		{
+			uint monitorId = getMouseMonitorID();
+			int rightMargin = bordersDict[monitorId][rightMarginKey];
+			int topMargin = bordersDict[monitorId][topMarginKey];
+			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
+			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+
+			int width = rightMargin - verticalRightSplit;
+			int height = bottomMargin - topMargin;
+			BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, topMargin, width, height);
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}	
+
 		
 
 		
 		public static void SixSplitLeft(IntPtr windowHandle)
 		{
-			if (BFS.Input.IsKeyDown(KEY_SHIFT))
+			if(BFS.Input.IsKeyDown(KEY_SHIFT) && !BFS.Input.IsKeyDown(KEY_CTRL)) // top only
 			{
-				TopLeftmost(windowHandle);
+				LeftmostTop(windowHandle);
 			}
-			else
+			else if(!BFS.Input.IsKeyDown(KEY_SHIFT) && BFS.Input.IsKeyDown(KEY_CTRL)) // bottom only
 			{
-				BottomLeftmost(windowHandle);
+				LeftmostBottom(windowHandle);
+			}
+			else if (BFS.Input.IsKeyDown(KEY_SHIFT) && BFS.Input.IsKeyDown(KEY_CTRL)) // both up and down - certer
+			{
+				LeftmostCenter(windowHandle);
+			}
+			else // no key modifier - full height
+			{
+				LeftmostFullHeight(windowHandle);
 			}
 		}
 		
 		public static void SixSplitMiddle(IntPtr windowHandle)
 		{
-			if (BFS.Input.IsKeyDown(KEY_SHIFT))
+			if(BFS.Input.IsKeyDown(KEY_SHIFT) && !BFS.Input.IsKeyDown(KEY_CTRL)) // top only
 			{
-				TopMiddle(windowHandle);
+				MiddleTop(windowHandle);
 			}
-			else
+			else if(!BFS.Input.IsKeyDown(KEY_SHIFT) && BFS.Input.IsKeyDown(KEY_CTRL)) // bottom only
 			{
-				BottomMiddle(windowHandle);
+				MiddleBottom(windowHandle);
+			}
+			else if (BFS.Input.IsKeyDown(KEY_SHIFT) && BFS.Input.IsKeyDown(KEY_CTRL)) // both up and down - certer
+			{
+				MiddleCenter(windowHandle);
+			}
+			else // no key modifier - full height
+			{
+				MiddleFullHeight(windowHandle);
 			}
 		}
 
 		public static void SixSplitRight(IntPtr windowHandle)
 		{
-			if (BFS.Input.IsKeyDown(KEY_SHIFT))
+			if(BFS.Input.IsKeyDown(KEY_SHIFT) && !BFS.Input.IsKeyDown(KEY_CTRL)) // top only
 			{
-				TopRightmost(windowHandle);
+				RightmostTop(windowHandle);
 			}
-			else
+			else if(!BFS.Input.IsKeyDown(KEY_SHIFT) && BFS.Input.IsKeyDown(KEY_CTRL)) // bottom only
 			{
-				BottomRightmost(windowHandle);
+				RightmostBottom(windowHandle);
+			}
+			else if (BFS.Input.IsKeyDown(KEY_SHIFT) && BFS.Input.IsKeyDown(KEY_CTRL)) // both up and down - certer
+			{
+				RightmostCenter(windowHandle);
+			}
+			else // no key modifier - full height
+			{
+				RightmostFullHeight(windowHandle);
 			}
 		}
 
