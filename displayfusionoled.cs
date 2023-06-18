@@ -53,8 +53,8 @@
 		public static string KEY_Q = "81";
 
 		// to store marings and splits for each monitor
-		// e.g. bordersDict[monitorID][horizontalTopSplitKey] = 10;
-		public static Dictionary<uint, Dictionary<string, int>> bordersDict = new Dictionary<uint, Dictionary<string, int>>();
+		// e.g. bordersDict[monitorRectAsID][horizontalTopSplitKey] = 10;
+		public static Dictionary<Rectangle, Dictionary<string, int>> bordersDict = new Dictionary<Rectangle, Dictionary<string, int>>();
 
 		public enum WindowHorizontalPosition
 		{
@@ -414,31 +414,31 @@
 		// verticalRightSplitKey - right border when doing 1-1-1 and 2-1 splits
 		public static void generateSplitBordersAllMonitors()
 		{
-			// Rectangle[] allMonitors = BFS.Monitor.GetMonitorBoundsNoSplits();
-			uint[] allMonitors = BFS.Monitor.GetMonitorIDs();
+			Rectangle[] allMonitors = BFS.Monitor.GetMonitorBoundsNoSplits();
+			// uint[] allMonitors = BFS.Monitor.GetMonitorIDs();
 
-			foreach (uint monitorID in allMonitors)
+			foreach (Rectangle monitorRectAsID in allMonitors)
 			{
-				Rectangle monitorRect = BFS.Monitor.GetMonitorBoundsByID(monitorID);
+				Rectangle monitorRect = monitorRectAsID; //BFS.Monitor.GetMonitorBoundsByID(monitorRectAsID);
+				uint monitorID = BFS.Monitor.GetMonitorIDByRect(monitorRectAsID);
 
 
-
-				// create dict of borders for this monitorID if not present 
-				if (!bordersDict.TryGetValue(monitorID, out Dictionary<string,int> borders))
+				// create dict of borders for this monitorRectAsID if not present 
+				if (!bordersDict.TryGetValue(monitorRectAsID, out Dictionary<string,int> borders))
 				{
-					bordersDict[monitorID] = new Dictionary<string,int>();
+					bordersDict[monitorRectAsID] = new Dictionary<string,int>();
 				}
 
-				generateSplitBorder(monitorID, topMarginKey,  monitorRect.Y + GetRandomShift(0, shiftRange));
-				generateSplitBorder(monitorID, bottomMarginKey, monitorRect.Y + monitorRect.Height - GetRandomShift(0, shiftRange));
-				generateSplitBorder(monitorID, leftMarginKey, monitorRect.X + GetRandomShift(0, shiftRange));
-				generateSplitBorder(monitorID, rightMarginKey, monitorRect.X + monitorRect.Width - GetRandomShift(0, shiftRange));
-				generateSplitBorder(monitorID, horizontalTopSplitKey, monitorRect.Y + monitorRect.Height / 3 + GetRandomShift(shiftRange));
-				generateSplitBorder(monitorID, horizontalMiddleSplitKey, monitorRect.Y + monitorRect.Height / 2 + GetRandomShift(shiftRange));
-				generateSplitBorder(monitorID, horizontalBottomSplitKey, monitorRect.Y + monitorRect.Height * 2 / 3 + GetRandomShift(shiftRange));
-				generateSplitBorder(monitorID, verticalLeftSplitKey, monitorRect.X + monitorRect.Width / 3 + GetRandomShift(shiftRange));
-				generateSplitBorder(monitorID, verticalMiddleSplitKey, monitorRect.X + monitorRect.Width / 2 + GetRandomShift(shiftRange));
-				generateSplitBorder(monitorID, verticalRightSplitKey, monitorRect.X + monitorRect.Width * 2 / 3 + GetRandomShift(shiftRange));
+				generateSplitBorder(monitorRectAsID, topMarginKey,  monitorRect.Y + GetRandomShift(0, shiftRange));
+				generateSplitBorder(monitorRectAsID, bottomMarginKey, monitorRect.Y + monitorRect.Height - GetRandomShift(0, shiftRange));
+				generateSplitBorder(monitorRectAsID, leftMarginKey, monitorRect.X + GetRandomShift(0, shiftRange));
+				generateSplitBorder(monitorRectAsID, rightMarginKey, monitorRect.X + monitorRect.Width - GetRandomShift(0, shiftRange));
+				generateSplitBorder(monitorRectAsID, horizontalTopSplitKey, monitorRect.Y + monitorRect.Height / 3 + GetRandomShift(shiftRange));
+				generateSplitBorder(monitorRectAsID, horizontalMiddleSplitKey, monitorRect.Y + monitorRect.Height / 2 + GetRandomShift(shiftRange));
+				generateSplitBorder(monitorRectAsID, horizontalBottomSplitKey, monitorRect.Y + monitorRect.Height * 2 / 3 + GetRandomShift(shiftRange));
+				generateSplitBorder(monitorRectAsID, verticalLeftSplitKey, monitorRect.X + monitorRect.Width / 3 + GetRandomShift(shiftRange));
+				generateSplitBorder(monitorRectAsID, verticalMiddleSplitKey, monitorRect.X + monitorRect.Width / 2 + GetRandomShift(shiftRange));
+				generateSplitBorder(monitorRectAsID, verticalRightSplitKey, monitorRect.X + monitorRect.Width * 2 / 3 + GetRandomShift(shiftRange));
 				//MessageBox.Show($"generateSplitBorder monitor ({monitorID}) X.{monitorRect.X} Y.{monitorRect.Y} [{monitorRect.Width}/{monitorRect.Height}] vemidsplit: {readIntKey(rightMarginKey+"_2")}");
 			}
 
@@ -447,10 +447,10 @@
 			lastBordersRecalc = currentTime;
 		}
 
-		public static void generateSplitBorder(uint monitorID, string borderKey, int newValue)
+		public static void generateSplitBorder(Rectangle monitorRectAsID, string borderKey, int newValue)
 		{
 			// use for storing in settings
-			string monitorBorderkey = borderKey + "_" + monitorID.ToString();
+			string monitorBorderkey = borderKey + "_" + monitorRectAsID.ToString();
 			BFS.ScriptSettings.WriteValue(monitorBorderkey, ""); // TODO remove
 
 			if (keyAlreadyGenerated(monitorBorderkey))
@@ -466,20 +466,21 @@
 			}
 
 				// try adding to bordersDict
-			if (bordersDict[monitorID].TryAdd(borderKey, newValue))
+			if (bordersDict[monitorRectAsID].TryAdd(borderKey, newValue))
 			{
 			}
 
+			uint monitorID = BFS.Monitor.GetMonitorIDByRect(monitorRectAsID);
 			//MessageBox.Show($"generateSplitBorder ({monitorID})[{monitorBorderkey}] W:{newValue.ToString()}, R:{readIntKey(monitorBorderkey)}");
 		}
 		
 		public static void Left(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int verticalMiddleSplit = bordersDict[monitorId][verticalMiddleSplitKey];
-			int leftMargin = bordersDict[monitorId][leftMarginKey];
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
+			int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
+			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
+			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
 
 			if (BFS.Input.IsKeyDown(KEY_SHIFT))
 			{
@@ -502,13 +503,14 @@
 		
 		public static void Right(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int rightMargin = bordersDict[monitorId][rightMarginKey];
-			int verticalMiddleSplit = bordersDict[monitorId][verticalMiddleSplitKey];
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
+			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
+			int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
+			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
 
-			// MessageBox.Show($"Right monitorID {monitorId}  verticalMiddleSplit {verticalMiddleSplit}");
+			uint monitorID = BFS.Monitor.GetMonitorIDByRect(monitorRectAsID);
+			// MessageBox.Show($"Right monitorRectAsID {monitorID}  verticalMiddleSplit {verticalMiddleSplit}");
 
 			if (BFS.Input.IsKeyDown(KEY_SHIFT))
 			{
@@ -532,11 +534,11 @@
 				
 		public static void TopLeft(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int leftMargin = bordersDict[monitorId][leftMarginKey];
-			int verticalMiddleSplit = bordersDict[monitorId][verticalMiddleSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
+			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
+			int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
 
 			int width = verticalMiddleSplit - leftMargin;
 			int height = horizontalMiddleSplit - topMargin;
@@ -546,11 +548,11 @@
 						
 		public static void TopRight(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int rightMargin = bordersDict[monitorId][rightMarginKey];
-			int verticalMiddleSplit = bordersDict[monitorId][verticalMiddleSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
+			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
+			int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
 
 			int width = rightMargin - verticalMiddleSplit;
 			int height = horizontalMiddleSplit - topMargin;
@@ -560,11 +562,11 @@
 					
 		public static void BottomLeft(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int leftMargin = bordersDict[monitorId][leftMarginKey];
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
-			int verticalMiddleSplit = bordersDict[monitorId][verticalMiddleSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
+			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
+			int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
 
 			int width = verticalMiddleSplit - leftMargin;
 			int height = bottomMargin - horizontalMiddleSplit;
@@ -574,11 +576,11 @@
 						
 		public static void BottomRight(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int rightMargin = bordersDict[monitorId][rightMarginKey];
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
-			int verticalMiddleSplit = bordersDict[monitorId][verticalMiddleSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
+			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
+			int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
 
 			int width = rightMargin - verticalMiddleSplit;
 			int height = bottomMargin - horizontalMiddleSplit;
@@ -590,11 +592,11 @@
 
 		public static void LeftmostTop(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int leftMargin = bordersDict[monitorId][leftMarginKey];
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
+			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
+			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
 
 			int width = verticalLeftSplit - leftMargin;
 			int height = horizontalMiddleSplit - topMargin;
@@ -604,11 +606,11 @@
 		
 		public static void LeftmostBottom(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int leftMargin = bordersDict[monitorId][leftMarginKey];
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
-			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
+			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
+			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
 			
 			int width = verticalLeftSplit - leftMargin;
 			int height = bottomMargin - horizontalMiddleSplit;
@@ -618,12 +620,12 @@
 					
 		public static void LeftmostCenter(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int leftMargin = bordersDict[monitorId][leftMarginKey];
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
-			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
+			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
+			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
+			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
 
 			int width = verticalLeftSplit - leftMargin;
 			int height = (bottomMargin - topMargin) / 2;
@@ -633,11 +635,11 @@
 		}
 		public static void LeftmostFullHeight(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int leftMargin = bordersDict[monitorId][leftMarginKey];
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
+			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
+			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
+			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
 
 			int width = verticalLeftSplit - leftMargin;
 			int height = bottomMargin - topMargin;
@@ -647,11 +649,11 @@
 		
 		public static void MiddleTop(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
-			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
+			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
+			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
 
 			int width = verticalRightSplit - verticalLeftSplit;
 			int height = horizontalMiddleSplit - topMargin;
@@ -661,11 +663,11 @@
 			
 		public static void MiddleBottom(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
-			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
-			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
+			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
+			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
 
 			int width = verticalRightSplit - verticalLeftSplit;
 			int height = bottomMargin - horizontalMiddleSplit;
@@ -675,12 +677,12 @@
 			
 		public static void MiddleCenter(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
-			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
-			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
+			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
+			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
+			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
 
 			int width = verticalRightSplit - verticalLeftSplit;
 			int height = (bottomMargin - topMargin) / 2;
@@ -691,11 +693,11 @@
 
 		public static void MiddleFullHeight(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
-			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
+			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
+			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
+			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
 
 			int width = verticalRightSplit - verticalLeftSplit;
 			int height = bottomMargin - topMargin;
@@ -705,11 +707,11 @@
 			
 		public static void RightmostTop(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int rightMargin = bordersDict[monitorId][rightMarginKey];
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
+			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
+			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
 
 			int width = rightMargin - verticalRightSplit;
 			int height = horizontalMiddleSplit - topMargin;
@@ -719,11 +721,11 @@
 						
 		public static void RightmostBottom(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
-			int rightMargin = bordersDict[monitorId][rightMarginKey];
-			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
+			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
+			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
 			
 			int width = rightMargin - verticalRightSplit;
 			int height = bottomMargin - horizontalMiddleSplit;
@@ -733,12 +735,12 @@
 
 		public static void RightmostCenter(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int rightMargin = bordersDict[monitorId][rightMarginKey];
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
-			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorId][horizontalMiddleSplitKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
+			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
+			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
+			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
+			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
 
 			int width = rightMargin - verticalRightSplit;
 			int height = (bottomMargin - topMargin) / 2;
@@ -749,11 +751,11 @@
 			
 		public static void RightmostFullHeight(IntPtr windowHandle)
 		{
-			uint monitorId = getMouseMonitorID();
-			int rightMargin = bordersDict[monitorId][rightMarginKey];
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
+			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
+			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
+			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
 
 			int width = rightMargin - verticalRightSplit;
 			int height = bottomMargin - topMargin;
@@ -839,16 +841,16 @@
 		
 		public static void NineSplit(IntPtr windowHandle, WindowHorizontalPosition position)
 		{
-			uint monitorId = getMouseMonitorID();
-			int topMargin = bordersDict[monitorId][topMarginKey];
-			int bottomMargin = bordersDict[monitorId][bottomMarginKey];
-			int leftMargin = bordersDict[monitorId][leftMarginKey];
-			int rightMargin = bordersDict[monitorId][rightMarginKey];
-			int verticalLeftSplit = bordersDict[monitorId][verticalLeftSplitKey];
-			// int verticalMiddleSplit = bordersDict[monitorId][verticalMiddleSplitKey];
-			int verticalRightSplit = bordersDict[monitorId][verticalRightSplitKey];
-			int horizontalTopSplit = bordersDict[monitorId][horizontalTopSplitKey];
-			int horizontalBottomSplit = bordersDict[monitorId][horizontalBottomSplitKey];
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
+			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
+			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
+			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
+			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
+			// int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
+			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
+			int horizontalTopSplit = bordersDict[monitorRectAsID][horizontalTopSplitKey];
+			int horizontalBottomSplit = bordersDict[monitorRectAsID][horizontalBottomSplitKey];
 
 			int height = 0, width = 0;
 			int x = 0, y = 0;
