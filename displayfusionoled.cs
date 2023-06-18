@@ -414,6 +414,7 @@
 		// verticalRightSplitKey - right border when doing 1-1-1 and 2-1 splits
 		public static void generateSplitBordersAllMonitors()
 		{
+
 			Rectangle[] allMonitors = BFS.Monitor.GetMonitorBoundsNoSplits();
 			// uint[] allMonitors = BFS.Monitor.GetMonitorIDs();
 
@@ -422,6 +423,8 @@
 				Rectangle monitorRect = monitorRectAsID; //BFS.Monitor.GetMonitorBoundsByID(monitorRectAsID);
 				uint monitorID = BFS.Monitor.GetMonitorIDByRect(monitorRectAsID);
 
+				// todo add check for each monitor (not all one flag because new can be connected)
+				// bool alreadyGenerated = readBoolKey(bordersAlreadyGeneratedKey);
 
 				// create dict of borders for this monitorRectAsID if not present 
 				if (!bordersDict.TryGetValue(monitorRectAsID, out Dictionary<string,int> borders))
@@ -451,12 +454,12 @@
 		{
 			// use for storing in settings
 			string monitorBorderkey = borderKey + "_" + monitorRectAsID.ToString();
-			BFS.ScriptSettings.WriteValue(monitorBorderkey, ""); // TODO remove
+			//BFS.ScriptSettings.WriteValue(monitorBorderkey, ""); // TODO remove
 
 			if (keyAlreadyGenerated(monitorBorderkey))
 			{
 				// ignore received new value and override with stored value
-				MessageBox.Show($"Key already generated: {monitorBorderkey}");
+				//MessageBox.Show($"Key already generated: {monitorBorderkey}");
 				newValue = readIntKey(monitorBorderkey);
 			}
 			else
@@ -908,7 +911,14 @@
 		{
 			return int.Parse(BFS.ScriptSettings.ReadValue(key));
 		}
-		
+
+		public static bool readBoolKey(string key)
+		{
+			bool result = false;
+			bool.TryParse(BFS.ScriptSettings.ReadValue(key), out result);
+			return result;
+		}
+
 		public static bool timerBorderRecalculateExpired()
 		{
 			DateTime currentTime = DateTime.Now; // Pobranie aktualnego czasu
@@ -920,22 +930,7 @@
 		
 		public static Rectangle getMouseMonitorBounds()
 		{
-			// todo BFS.Monitor.GetMonitorBoundsByMouseCursor???
-			// Get the mouse position
-			Point mousePosition = new Point(BFS.Input.GetMousePositionX(), BFS.Input.GetMousePositionY());
-			
-			// Get an array of the bounds for all monitors ignoring splits
-			Rectangle[] monitorBoundsAll = BFS.Monitor.GetMonitorBoundsNoSplits();
-			
-			// Loop through the array of bounds and find monitor in which mouse in located
-			foreach (Rectangle monitorBounds in monitorBoundsAll)
-			{
-				if (monitorBounds.Contains(mousePosition))
-				{
-					return monitorBounds;
-				}
-			}
-			return default; 
+			return BFS.Monitor.GetMonitorBoundsByMouseCursor();
 		}
 		
 		public static uint getMouseMonitorID()
