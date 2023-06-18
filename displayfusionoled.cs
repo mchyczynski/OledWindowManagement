@@ -4,6 +4,7 @@
 	using System.Drawing;
 	using System.Windows.Forms;
 	using System.Collections.Generic;
+	using System.Runtime.InteropServices;
 
 	// The 'windowHandle' parameter will contain the window handle for the:
 	// - Active window when run by hotkey
@@ -14,6 +15,7 @@
 	public static class DisplayFusionFunction
 	{
 		public static int shiftRange = 100;
+		public const int horShiftDistance = 10, verShiftDistance = 10;
 		public static bool enableSizeVariance = false;
 		public static bool enablePositionVariance = true;
 		public static bool enableWholeSpaceShift = true;
@@ -55,7 +57,7 @@
 		// to store marings and splits for each monitor
 		// e.g. bordersDict[monitorRectAsID][horizontalTopSplitKey] = 10;
 		public static Dictionary<Rectangle, Dictionary<string, int>> bordersDict = new Dictionary<Rectangle, Dictionary<string, int>>();
-
+		public static Dictionary<string, int> windowDirectionsDict = new Dictionary<string, int>();
 		public enum WindowHorizontalPosition
 		{
 			Left,
@@ -176,7 +178,7 @@
 
 			if(!alreadyMovingWindows)
 			{
-				MessageBox.Show("Starting MoveWindows" + BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle));
+				//MessageBox.Show("Starting MoveWindows" + BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle));
 				MoveWindows();
 			}
 			else
@@ -187,19 +189,10 @@
 		public static void MoveWindows()
 		{
 			enableWindowsPositionTimedShift = true;
-			const int horShiftDistance = 10, verShiftDistance = 10;
-
-			int horDirection = -1, verDirection = -1; // calculated each iteration when monitor edge hit
-			int finalHorShift = 0, finalVerShift = 0; // calculated on the beggining of each iteration based on distance and direction determined prev iteration
-
 			while(enableWindowsPositionTimedShift)
 			{
 				BFS.ScriptSettings.WriteValue(moveFlagKey, true.ToString());
 				BFS.General.ThreadWait(moveWindowTimerDelay); // first wait so that move is not instant
-
-				// update shift based on direction from prev iteration
-				finalHorShift = horShiftDistance * horDirection;
-				finalVerShift = verShiftDistance * verDirection;
 
 				foreach(IntPtr windowHandle in BFS.Window.GetVisibleAndMinimizedWindowHandles())
 				{
@@ -218,75 +211,108 @@
 
 					if(monitorRect.Width == 0 || monitorRect.Height == 0)
 					{
-						MessageBox.Show("STOP move no monitor");
+						MessageBox.Show("STOP move no monitor"); // todo just ignore this window?
 						enableWindowsPositionTimedShift = false;
 						break;
 					}
+
+					int horDirection = -1, verDirection = -1;
+					int finalHorShift = 0, finalVerShift = 0;
+					// string windowHandleKey = Marshal.PtrToStringUni(windowHandle);
+
+					// int dir;
+					// if(!windowDirectionsDict.TryGetValue(windowHandleKey, out dir))
+					// {
+					// 	if(keyAlreadyGenerated(windowHandleKey))
+					// 	{
+					// 		dir = readIntKey(windowHandleKey);
+					// 	}
+					// 	else
+					// 	{
+					// 		dir = 1;
+					// 	}
+					// 	windowDirectionsDict[windowHandleKey] = dir;
+					// }
 
 					// TODO move margins and splits
 					//  find what direction
 					// one pass through all windows and decide direction for next move? (so that 2 loops not needed)
 
-					if (isWindowInsideOuterMargins(monitorRect, windowRect, finalHorShift, finalVerShift))
-					{
-						// move with other windows inside
-					}
-					else
+					if (isWindowInsideOuterMargins(monitorRect, windowRect, out horDirection, out verDirection))
 					{
 						continue; // ignore for now
-						// move independtly
-						// each window own direction
+						// check if new position will be outside of current monitor and switch shift direction
+
+						// update shift based on direction from prev iteration
+						finalHorShift = horShiftDistance * horDirection; // todo
+						finalVerShift = verShiftDistance * verDirection;
+
+
+						// would hit monitor LEFT?
+						if (windowRect.X+finalHorShift <= monitorRect.X) 
+						{
+							MessageBox.Show($"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} ({windowRect.X+finalHorShift}) <= monitorRect.X {monitorRect.X}");
+							horDirection = 1;
+						}
+
+						// would hit monitor RIGHT?
+						if (windowRect.X+finalHorShift + windowRect.Width >= monitorRect.X + monitorRect.Width)
+						{
+							MessageBox.Show($@"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} +windowRect.Width {windowRect.Width} ({windowRect.X+finalHorShift+windowRect.Width}) 
+											>=
+											monitorRect.X {monitorRect.X} + monitorRect.Width {monitorRect.Width} ({monitorRect.X+monitorRect.Width})");
+							horDirection = -1;
+						}
+						
+						// would hit monitor TOP?
+						if (windowRect.Y+finalVerShift <= monitorRect.Y)
+						{				
+							MessageBox.Show($"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} ({windowRect.Y+finalVerShift}) <= monitorRect.Y {monitorRect.Y}");
+							verDirection = 1;
+						}
+						
+						// would hit monitor BOTTOM?
+						if(windowRect.Y+finalVerShift + windowRect.Height >= monitorRect.Y + monitorRect.Height)
+						{
+							MessageBox.Show($@"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} +windowRect.Height {windowRect.Height} ({windowRect.Y+finalVerShift+windowRect.Height}) 
+											>= 
+											monitorRect.Y {monitorRect.Y} + monitorRect.Height {monitorRect.Height} ({monitorRect.Y+monitorRect.Height})");
+							verDirection = -1;
+						}
+
+						// calculate final shift and move window // moved on begginign so that direction is changed for next move
+						// finalHorShift = horShiftDistance * horDirection;
+						// finalVerShift = verShiftDistance * verDirection;
+						BFS.Window.SetLocation(windowHandle, windowRect.X+finalHorShift, windowRect.Y+finalVerShift);
+						// MessageBox.Show("Moved window " + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
+						// move with other windows inside
+						// move margins and splits ()
+					}
+					else // OUTSIDE MARGINS
+					{
+						// move independently each window based on which margins we want to meet
+						// horDirection and  verDirection calculated in isWindowInsideOuterMargins based on which margins we are outside
+						if(horDirection == 0 && verDirection == 0)
+						{
+							MessageBox.Show($"Error else // OUTSIDE MARGINS horDirection {horDirection} verDirection {verDirection} ");
+						}
+						finalHorShift = horShiftDistance * horDirection;
+						finalVerShift = verShiftDistance * verDirection;
+						BFS.Window.SetLocation(windowHandle, windowRect.X+finalHorShift, windowRect.Y+finalVerShift);
 					}
 
-					// check if new position will be outside of current monitor and switch shift direction
-					// would hit monitor LEFT?
-					if (windowRect.X+finalHorShift <= monitorRect.X) 
-					{
-						MessageBox.Show($"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} ({windowRect.X+finalHorShift}) <= monitorRect.X {monitorRect.X}");
-						horDirection = 1;
-					}
 
-					// would hit monitor RIGHT?
-					if (windowRect.X+finalHorShift + windowRect.Width >= monitorRect.X + monitorRect.Width)
-					{
-						MessageBox.Show($@"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} +windowRect.Width {windowRect.Width} ({windowRect.X+finalHorShift+windowRect.Width}) 
-										>=
-										monitorRect.X {monitorRect.X} + monitorRect.Width {monitorRect.Width} ({monitorRect.X+monitorRect.Width})");
-						horDirection = -1;
-					}
-					
-					// would hit monitor TOP?
-					if (windowRect.Y+finalVerShift <= monitorRect.Y)
-					{				
-						MessageBox.Show($"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} ({windowRect.Y+finalVerShift}) <= monitorRect.Y {monitorRect.Y}");
-						verDirection = 1;
-					}
-					
-					// would hit monitor BOTTOM?
-					if(windowRect.Y+finalVerShift + windowRect.Height >= monitorRect.Y + monitorRect.Height)
-					{
-						MessageBox.Show($@"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} +windowRect.Height {windowRect.Height} ({windowRect.Y+finalVerShift+windowRect.Height}) 
-										>= 
-										monitorRect.Y {monitorRect.Y} + monitorRect.Height {monitorRect.Height} ({monitorRect.Y+monitorRect.Height})");
-						verDirection = -1;
-					}
-
-					// calculate final shift and move window // moved on begginign so that direction is changed for next move
-					// finalHorShift = horShiftDistance * horDirection;
-					// finalVerShift = verShiftDistance * verDirection;
-					BFS.Window.SetLocation(windowHandle, windowRect.X+finalHorShift, windowRect.Y+finalVerShift);
-					// MessageBox.Show("Moved window " + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
-				}
-			}
+				} // foreach window
+			} // while true
 
 			BFS.ScriptSettings.WriteValue(moveFlagKey, false.ToString());
 			MessageBox.Show("Stopping move");
 		}
 
-		public static bool isWindowInsideOuterMargins(Rectangle monitorRect, Rectangle windowRect, int finalHorShift, int finalVerShift)
+		public static bool isWindowInsideOuterMargins(Rectangle monitorRect, Rectangle windowRect, out int horDirection, out int verDirection)
 		{
-			int newLeft = windowRect.X; //+finalHorShift;
-			int newTop = windowRect.Y; // +finalVerShift;
+			int newLeft = windowRect.X;
+			int newTop = windowRect.Y;
 			int newRight = newLeft + windowRect.Width;
 			int newBottom = newTop + windowRect.Height;
 
@@ -295,36 +321,39 @@
 			int leftMargin = bordersDict[monitorRect][leftMarginKey];
 			int rightMargin = bordersDict[monitorRect][rightMarginKey];
 
-			// check top margin
-			if (newTop < topMargin)
+			// assign default val, shouldnt be used
+			horDirection = 0;
+			verDirection = 0;
+
+			bool tooHigh = newTop < topMargin;
+			bool tooLow = newBottom > bottomMargin;
+			bool tooLeft = newLeft < leftMargin;
+			bool tooRight = newRight > rightMargin;
+
+			bool windowIsInsideMargins = !(tooHigh || tooLow || tooLeft || tooRight); // outside margis when any flag true
+
+			// decide vertical direction
+			if (tooLow && tooHigh) verDirection = 0; tutaj pomyslec // todo what to do when both too high and too low? get dir from together move?
+			else if (tooLow && !tooHigh) verDirection = -1; // force to go up
+			else if (!tooLow && tooHigh) verDirection = 1; // force to go down
+			else verDirection = 0; // vertically in margins, no move
+
+			// decide horizontal direction
+			if (tooLeft && tooRight) horDirection = 0; tutaj pomyslec // todo what to do when both too left and too right? get dir from together move?
+			else if (tooLeft && !tooRight) horDirection = 1; // force to go right
+			else if (!tooLeft && tooRight) horDirection = -1; // force to go left
+			else horDirection = 0; // horizontally in margins, no move
+
+			if(windowIsInsideMargins) // INSIDE margins
+			{
+				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] INSIDE margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
+			}
+			else // OUTSIDE margins
 			{
 				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] outside margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
-				return false;
 			}
 			
-			// check bottom
-			if (newBottom > bottomMargin)
-			{
-				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] outside margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
-				return false;
-			}
-
-			// check left margin
-			if (newLeft < leftMargin)
-			{
-				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] outside margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
-				return false;
-			}
-			
-			// check bottom
-			if (newRight > rightMargin)
-			{
-				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] outside margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
-				return false;
-			}
-
-			MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] INSIDE margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
-			return true;
+			return windowIsInsideMargins;
 		}
 
 		// public static MoveSingleWIndow(IntPtr windowHandle, int shiftHor, int shiftVer)
