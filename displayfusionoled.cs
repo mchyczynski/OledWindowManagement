@@ -13,7 +13,7 @@
 	// - Currently focused window if none of these match
 	public static class DisplayFusionFunction
 	{
-		public static int shiftRange = 0;
+		public static int shiftRange = 100;
 		public static bool enableSizeVariance = false;
 		public static bool enablePositionVariance = true;
 		public static bool enableWholeSpaceShift = true;
@@ -226,12 +226,14 @@
 					// TODO move margins and splits
 					//  find what direction
 					// one pass through all windows and decide direction for next move? (so that 2 loops not needed)
-					if ( /* in current margins */ true)
+
+					if (isWindowInsideOuterMargins(monitorRect, windowRect, finalHorShift, finalVerShift))
 					{
 						// move with other windows inside
 					}
 					else
 					{
+						continue; // ignore for now
 						// move independtly
 						// each window own direction
 					}
@@ -279,6 +281,50 @@
 
 			BFS.ScriptSettings.WriteValue(moveFlagKey, false.ToString());
 			MessageBox.Show("Stopping move");
+		}
+
+		public static bool isWindowInsideOuterMargins(Rectangle monitorRect, Rectangle windowRect, int finalHorShift, int finalVerShift)
+		{
+			int newLeft = windowRect.X; //+finalHorShift;
+			int newTop = windowRect.Y; // +finalVerShift;
+			int newRight = newLeft + windowRect.Width;
+			int newBottom = newTop + windowRect.Height;
+
+			int topMargin = bordersDict[monitorRect][topMarginKey];
+			int bottomMargin = bordersDict[monitorRect][bottomMarginKey];
+			int leftMargin = bordersDict[monitorRect][leftMarginKey];
+			int rightMargin = bordersDict[monitorRect][rightMarginKey];
+
+			// check top margin
+			if (newTop < topMargin)
+			{
+				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] outside margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
+				return false;
+			}
+			
+			// check bottom
+			if (newBottom > bottomMargin)
+			{
+				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] outside margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
+				return false;
+			}
+
+			// check left margin
+			if (newLeft < leftMargin)
+			{
+				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] outside margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
+				return false;
+			}
+			
+			// check bottom
+			if (newRight > rightMargin)
+			{
+				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] outside margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
+				return false;
+			}
+
+			MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] INSIDE margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
+			return true;
 		}
 
 		// public static MoveSingleWIndow(IntPtr windowHandle, int shiftHor, int shiftVer)
@@ -391,14 +437,14 @@
 
 		public static int GetRandomShift(int range)
 		{
-			return 0;
+			// return 0;
 			Random random = new Random();
 			return random.Next(-range, range + 1);
 		}
 		
 		public static int GetRandomShift(int start, int end)
 		{
-			return 0;
+			// return 0;
 			Random random = new Random();
 			return random.Next(start, end);
 		}
@@ -454,7 +500,7 @@
 		{
 			// use for storing in settings
 			string monitorBorderkey = borderKey + "_" + monitorRectAsID.ToString();
-			//BFS.ScriptSettings.WriteValue(monitorBorderkey, ""); // TODO remove
+			BFS.ScriptSettings.WriteValue(monitorBorderkey, ""); // TODO remove
 
 			if (keyAlreadyGenerated(monitorBorderkey))
 			{
