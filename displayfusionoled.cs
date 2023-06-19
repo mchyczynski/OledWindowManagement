@@ -65,6 +65,15 @@
 			Middle
 		}
 		
+		public class MarginStatus
+		{
+			public bool tooHigh { get; set; }
+			public bool tooLow { get; set; }
+			public bool tooLeft { get; set; }
+			public bool tooRight { get; set; }
+		}
+
+
 		public static void Run(IntPtr windowHandle)
 		{
 			//these are all of the functions from the "Window Management" functions list
@@ -238,7 +247,8 @@
 					//  find what direction
 					// one pass through all windows and decide direction for next move? (so that 2 loops not needed)
 
-					if (isWindowInsideOuterMargins(monitorRect, windowRect, out horDirection, out verDirection))
+			 		MarginStatus marginInfo = getWindowMarginsStatus(monitorRect, windowRect);
+					if (isWindowInsideMargins(marginInfo))
 					{
 						continue; // ignore for now
 						// check if new position will be outside of current monitor and switch shift direction
@@ -290,6 +300,8 @@
 					}
 					else // OUTSIDE MARGINS
 					{
+						HandleWindowOutsideMargins(marginInfo, out horDirection, out verDirection);
+						
 						// move independently each window based on which margins we want to meet
 						// horDirection and  verDirection calculated in isWindowInsideOuterMargins based on which margins we are outside
 						if(horDirection == 0 && verDirection == 0)
@@ -309,7 +321,7 @@
 			MessageBox.Show("Stopping move");
 		}
 
-		public static bool isWindowInsideOuterMargins(Rectangle monitorRect, Rectangle windowRect, out int horDirection, out int verDirection)
+		public static MarginStatus getWindowMarginsStatus(Rectangle monitorRect, Rectangle windowRect)
 		{
 			int newLeft = windowRect.X;
 			int newTop = windowRect.Y;
@@ -321,30 +333,14 @@
 			int leftMargin = bordersDict[monitorRect][leftMarginKey];
 			int rightMargin = bordersDict[monitorRect][rightMarginKey];
 
-			// assign default val, shouldnt be used
-			horDirection = 0;
-			verDirection = 0;
-
-			bool tooHigh = newTop < topMargin;
-			bool tooLow = newBottom > bottomMargin;
-			bool tooLeft = newLeft < leftMargin;
-			bool tooRight = newRight > rightMargin;
-
-			bool windowIsInsideMargins = !(tooHigh || tooLow || tooLeft || tooRight); // outside margis when any flag true
-
-			// decide vertical direction
-			if (tooLow && tooHigh) verDirection = 0; tutaj pomyslec // todo what to do when both too high and too low? get dir from together move?
-			else if (tooLow && !tooHigh) verDirection = -1; // force to go up
-			else if (!tooLow && tooHigh) verDirection = 1; // force to go down
-			else verDirection = 0; // vertically in margins, no move
-
-			// decide horizontal direction
-			if (tooLeft && tooRight) horDirection = 0; tutaj pomyslec // todo what to do when both too left and too right? get dir from together move?
-			else if (tooLeft && !tooRight) horDirection = 1; // force to go right
-			else if (!tooLeft && tooRight) horDirection = -1; // force to go left
-			else horDirection = 0; // horizontally in margins, no move
-
-			if(windowIsInsideMargins) // INSIDE margins
+			var marginStatus = new MarginStatus
+			{
+				tooHigh = newTop < topMargin,
+				tooLow = newBottom > bottomMargin,
+				tooLeft = newLeft < leftMargin,
+				tooRight = newRight > rightMargin
+			};
+			if(isWindowInsideMargins(marginStatus)) // INSIDE margins
 			{
 				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] INSIDE margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
 			}
@@ -352,8 +348,29 @@
 			{
 				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] outside margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
 			}
-			
+			return marginStatus;
+		}
+
+		public static bool isWindowInsideMargins(MarginStatus marginInfo)
+		{
+			bool windowIsInsideMargins = !(marginInfo.tooHigh || marginInfo.tooLow || marginInfo.tooLeft || marginInfo.tooRight); // outside margis when any flag true
+
 			return windowIsInsideMargins;
+		}
+
+		public static void HandleWindowOutsideMargins(MarginStatus marginInfo, out int horDirection, out int verDirection)
+		{
+			// decide vertical direction
+			if (marginInfo.tooLow && marginInfo.tooHigh) verDirection = 0; // todo what to do when both marginInfo.too high and marginInfo.too low? get dir from together move?
+			else if (marginInfo.tooLow && !marginInfo.tooHigh) verDirection = -1; // force to go up
+			else if (!marginInfo.tooLow && marginInfo.tooHigh) verDirection = 1; // force to go down
+			else verDirection = 0; // vertically in margins, no move
+
+			// decide horizontal direction
+			if (marginInfo.tooLeft && marginInfo.tooRight) horDirection = 0; // todo what to do when both marginInfo.too left and marginInfo.too right? get dir from together move?
+			else if (marginInfo.tooLeft && !marginInfo.tooRight) horDirection = 1; // force to go right
+			else if (!marginInfo.tooLeft && marginInfo.tooRight) horDirection = -1; // force to go left
+			else horDirection = 0; // horizontally in margins, no move
 		}
 
 		// public static MoveSingleWIndow(IntPtr windowHandle, int shiftHor, int shiftVer)
