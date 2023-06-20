@@ -395,33 +395,47 @@
 			string windowHandleKey = windowHandle.ToString() + "_outmargins_verdir";  // todo
 			MarginStatus borderInfo = getWindowBorderStatus(monitorRect, windowRect);
 
-			if (marginInfo.tooLow && marginInfo.tooHigh) // outside both margins
-			{
-				if(borderInfo.tooHigh && !borderInfo.tooLow) verDirection = 1; // go down, back inside monitor
-				else if (!borderInfo.tooHigh && borderInfo.tooLow) verDirection = -1; // go up back, inside monitor
-				else if (!borderInfo.tooHigh && !borderInfo.tooLow) // outside both margins but in monitor borders
+			// if (marginInfo.tooLow && marginInfo.tooHigh) // outside both margins
+			// {
+				if(windowRect.Height < monitorRect.Height) // window will fit in monitor
 				{
-					if(keyAlreadyGenerated(windowHandleKey))
+					if(borderInfo.tooHigh && !borderInfo.tooLow) verDirection = 1; // go down, back inside monitor
+					else if (!borderInfo.tooHigh && borderInfo.tooLow) verDirection = -1; // go up back, inside monitor
+					else if (!borderInfo.tooHigh && !borderInfo.tooLow) // in monitor borders
 					{
-						verDirection = readIntKey(windowHandleKey);
-						MessageBox.Show($"readIntKey verDirection: {verDirection}");
+						if(keyAlreadyGenerated(windowHandleKey))
+						{
+							verDirection = readIntKey(windowHandleKey);
+							MessageBox.Show($"readIntKey verDirection: {verDirection}");
+
+							if(verDirection == 0)
+							{
+								verDirection = 1; // move when inside monitor borders
+							}
+						}
+						else 
+						{
+							verDirection = 1; // todo what dir when outside margins ver but in both monitor borders? random?
+							// BFS.ScriptSettings.WriteValue(windowHandleKey, verDirection.ToString());
+						}
 					}
-					else 
+					else // outside monitor up and down, move window down to show top
 					{
-						verDirection = 1; // todo what dir when outside margins ver but in both monitor borders? random?
-						BFS.ScriptSettings.WriteValue(windowHandleKey, verDirection.ToString());
+						verDirection = 1;
+						MessageBox.Show("warning window both to high and too low"); // todo remove?
 					}
-				}
-				else // outside monitor up and down, move window down to show top
+				} 
+				else // window will never fit inside monitor borders because too high
 				{
-					verDirection = 1;
-					MessageBox.Show("warning window both to high and too low"); // todo remove?
+					verDirection = 0;
+					MessageBox.Show("window will never fit inside monitor borders because too high"); // todo remove?
 				}
-			}
-			else if (marginInfo.tooLow && !marginInfo.tooHigh) verDirection = -1; // force to go up
-			else if (!marginInfo.tooLow && marginInfo.tooHigh) verDirection = 1; // force to go down
-			else verDirection = 0; // vertically in margins, no move // todo really no move?
+			// }
+			// else if (marginInfo.tooLow && !marginInfo.tooHigh) verDirection = -1; // force to go up
+			// else if (!marginInfo.tooLow && marginInfo.tooHigh) verDirection = 1; // force to go down
+			// else verDirection = 0; // vertically in margins, no move // todo really no move?
 			MessageBox.Show($"verDirection: {verDirection}");
+			BFS.ScriptSettings.WriteValue(windowHandleKey, verDirection.ToString());
 		}
 
 		public static void decideHorDirectionForOutsideMargins(MarginStatus marginInfo, IntPtr windowHandle, Rectangle monitorRect, Rectangle windowRect, out int horDirection)
@@ -430,33 +444,47 @@
 			string windowHandleKey = windowHandle.ToString() + "_outmargins_hordir"; // todo
 			MarginStatus borderInfo = getWindowBorderStatus(monitorRect, windowRect);
 
-			if (marginInfo.tooLeft && marginInfo.tooRight) // outside both margins
-			{
-				if (borderInfo.tooRight && !borderInfo.tooLeft) horDirection = -1; // go left, back inside monitor
-				else if (!borderInfo.tooRight && borderInfo.tooLeft) horDirection = 1; // go right, back inside monitor
-				else if (!borderInfo.tooRight && !borderInfo.tooLeft) // outside both margins but in monitor borders
+			// if (marginInfo.tooLeft && marginInfo.tooRight) // outside both margins
+			// {
+				if (windowRect.Width < monitorRect.Width) // window will fit in monitor
 				{
-					if (keyAlreadyGenerated(windowHandleKey))
+					if (borderInfo.tooRight && !borderInfo.tooLeft) horDirection = -1; // go left, back inside monitor
+					else if (!borderInfo.tooRight && borderInfo.tooLeft) horDirection = 1; // go right, back inside monitor
+					else if (!borderInfo.tooRight && !borderInfo.tooLeft) // in monitor borders
 					{
-						horDirection = readIntKey(windowHandleKey);
-						MessageBox.Show($"readIntKey horDirection: {horDirection}");
+						if (keyAlreadyGenerated(windowHandleKey))
+						{
+							horDirection = readIntKey(windowHandleKey);
+							MessageBox.Show($"readIntKey horDirection: {horDirection}");
+
+							if(horDirection == 0)
+							{
+								horDirection = 1; // move when inside monitor borders
+							}
+						}
+						else
+						{
+							horDirection = 1; // todo what dir when outside margins hor but in both monitor borders? random?
+							// BFS.ScriptSettings.WriteValue(windowHandleKey, horDirection.ToString());
+						}
 					}
-					else
+					else // outside monitor left and right, move window to the right to show left side
 					{
-						horDirection = 1; // todo what dir when outside margins hor but in both monitor borders? random?
-						BFS.ScriptSettings.WriteValue(windowHandleKey, horDirection.ToString());
+						horDirection = 1;
+						MessageBox.Show("warning window both too right and too left"); // todo remove?
 					}
 				}
-				else // outside monitor left and right, move window to the right to show left side
+				else // window will never fit inside monitor borders bevause too wide
 				{
-					horDirection = 1;
-					MessageBox.Show("warning window both too right and too left"); // todo remove?
+					horDirection = 0;
+					MessageBox.Show("window will never fit inside monitor borders because too wide"); // todo remove?
 				}
-			}
-			else if (marginInfo.tooLeft && !marginInfo.tooRight) horDirection = 1; // force to go right
-			else if (!marginInfo.tooLeft && marginInfo.tooRight) horDirection = -1; // force to go left
-			else horDirection = 0; // horizontally in margins, no move // todo really no move?
+			// }
+			// else if (marginInfo.tooLeft && !marginInfo.tooRight) horDirection = 1; // force to go right
+			// else if (!marginInfo.tooLeft && marginInfo.tooRight) horDirection = -1; // force to go left
+			// else horDirection = 0; // horizontally in margins, no move // todo really no move?
 			MessageBox.Show($"horDirection: {horDirection}");
+			BFS.ScriptSettings.WriteValue(windowHandleKey, horDirection.ToString());
 		}
 
 		public static void HandleWindowOutsideMargins(MarginStatus marginInfo, IntPtr windowHandle, Rectangle monitorRect, Rectangle  windowRect,  out int horDirection, out int verDirection)
