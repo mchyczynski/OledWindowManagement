@@ -1165,12 +1165,19 @@
 			// Get an array of the bounds for all monitors ignoring splits
 			Rectangle[] monitorBoundsAll = BFS.Monitor.GetMonitorBoundsNoSplits();
 			
-			// Find monitor containing windows TOP LEFT corner
-			Point windowPosition = new Point(windowRect.X, windowRect.Y);
+			// find monitor for CENTER point of window
+			Point windowPosition = new Point(windowRect.X + windowRect.Width / 2, windowRect.Y + windowRect.Height / 2);
 			Rectangle monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
+			string windowID = BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle);
 			if (monitor != Rectangle.Empty) 
 				return monitor;
-			string windowID = BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle);
+			MessageBox.Show($"Did not find monitor for window CENTER {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
+
+			// Find monitor containing windows TOP LEFT corner
+			windowPosition = new Point(windowRect.X, windowRect.Y);
+			monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
+			if (monitor != Rectangle.Empty) 
+				return monitor;
 			MessageBox.Show($"Did not find monitor for window TOP LEFT {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
 
 			// find monitor for TOP RIGHT window conrner
@@ -1179,13 +1186,6 @@
 			if (monitor != Rectangle.Empty) 
 				return monitor;
 			MessageBox.Show($"Did not find monitor for window TOP RIGHT {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
-
-			// find monitor for CENTER point of window
-			windowPosition = new Point(windowRect.X + windowRect.Width / 2, windowRect.Y + windowRect.Height / 2);
-			monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
-			if (monitor != Rectangle.Empty) 
-				return monitor;
-			MessageBox.Show($"Did not find monitor for window CENTER {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
 
 			// find monitor for BOTTOM LEFT window conrner
 			windowPosition= new Point(windowRect.X, windowRect.Y + windowRect.Height);
