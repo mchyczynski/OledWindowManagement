@@ -34,18 +34,12 @@
 		public static string verticalLeftSplitKey = "verticalLeftSplitKey";
 		public static string verticalRightSplitKey = "verticalRightSplitKey";
 		public static string moveFlagKey = "moveFlagKey";
+		public static string horDirectionInsideMarginsKey = "horDirectionInsideMarginsKey";
+		public static string verDirectionInsideMarginsKey = "verDirectionInsideMarginsKey";
 
-		// public static int topMargin = 0;
-		// public static int bottomMargin = 0;
-		// public static int leftMargin = 0;
-		// public static int rightMargin = 0;
-		// public static int horizontalTopSplit = 0;
-		// public static int horizontalMiddleSplit = 0;
-		// public static int horizontalBottomSplit = 0;
-		// public static int verticalLeftSplit = 0;
-		// public static int verticalMiddleSplit = 0;
-		// public static int verticalRightSplit = 0;
-		
+		public static string verDirPrefixForWindowOutsideMarginsKeyPostfix = "OutsideMarginsVerDirectionKeyPostfix";
+		public static string horDirPrefixForWindowOutsideMarginsKeyPostfix = "OutsideMarginsHorDirectionKeyPostfix";
+
 		public static DateTime lastBordersRecalc = DateTime.MinValue;
 		public static uint moveWindowTimerDelay = 1000; 
 
@@ -203,11 +197,13 @@
 				BFS.ScriptSettings.WriteValue(moveFlagKey, true.ToString());
 				BFS.General.ThreadWait(moveWindowTimerDelay); // first wait so that move is not instant
 
+				shiftMargins();
+
 				foreach(IntPtr windowHandle in BFS.Window.GetVisibleAndMinimizedWindowHandles())
 				{
 					string name = BFS.Window.GetText(windowHandle);
 
-					if (BFS.Window.IsMinimized(windowHandle) || // dont move minimized windows because it wil un-minimize them
+					if (BFS.Window.IsMinimized(windowHandle) || // dont move minimized windows because it wil un-minimize them // todo save when it would be moved and use when unminimized
 						BFS.Window.IsMaximized(windowHandle) ||  // ignore maximized windows
 						(String.IsNullOrEmpty(name) || name == "Program Manager") ) // ignore fake windows
 					{
@@ -225,93 +221,17 @@
 						break;
 					}
 
-					int horDirection = -1, verDirection = -1;
-					int finalHorShift = 0, finalVerShift = 0;
-					// string windowHandleKey = Marshal.PtrToStringUni(windowHandle);
-
-					// int dir;
-					// if(!windowDirectionsDict.TryGetValue(windowHandleKey, out dir))
-					// {
-					// 	if(keyAlreadyGenerated(windowHandleKey))
-					// 	{
-					// 		dir = readIntKey(windowHandleKey);
-					// 	}
-					// 	else
-					// 	{
-					// 		dir = 1;
-					// 	}
-					// 	windowDirectionsDict[windowHandleKey] = dir;
-					// }
-
-					// TODO move margins and splits
-					//  find what direction
-					// one pass through all windows and decide direction for next move? (so that 2 loops not needed)
 
 			 		MarginStatus marginInfo = getWindowMarginsStatus(monitorRect, windowRect);
 					if (isWindowInsideMargins(marginInfo))
 					{
-						continue; // ignore for now
-						// check if new position will be outside of current monitor and switch shift direction
+						HandleWindowInsideMargins(windowHandle);
 
-						// update shift based on direction from prev iteration
-						finalHorShift = horShiftDistance * horDirection; // todo
-						finalVerShift = verShiftDistance * verDirection;
-
-
-						// would hit monitor LEFT?
-						if (windowRect.X+finalHorShift <= monitorRect.X) 
-						{
-							MessageBox.Show($"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} ({windowRect.X+finalHorShift}) <= monitorRect.X {monitorRect.X}");
-							horDirection = 1;
-						}
-
-						// would hit monitor RIGHT?
-						if (windowRect.X+finalHorShift + windowRect.Width >= monitorRect.X + monitorRect.Width)
-						{
-							MessageBox.Show($@"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} +windowRect.Width {windowRect.Width} ({windowRect.X+finalHorShift+windowRect.Width}) 
-											>=
-											monitorRect.X {monitorRect.X} + monitorRect.Width {monitorRect.Width} ({monitorRect.X+monitorRect.Width})");
-							horDirection = -1;
-						}
-						
-						// would hit monitor TOP?
-						if (windowRect.Y+finalVerShift <= monitorRect.Y)
-						{				
-							MessageBox.Show($"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} ({windowRect.Y+finalVerShift}) <= monitorRect.Y {monitorRect.Y}");
-							verDirection = 1;
-						}
-						
-						// would hit monitor BOTTOM?
-						if(windowRect.Y+finalVerShift + windowRect.Height >= monitorRect.Y + monitorRect.Height)
-						{
-							MessageBox.Show($@"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} +windowRect.Height {windowRect.Height} ({windowRect.Y+finalVerShift+windowRect.Height}) 
-											>= 
-											monitorRect.Y {monitorRect.Y} + monitorRect.Height {monitorRect.Height} ({monitorRect.Y+monitorRect.Height})");
-							verDirection = -1;
-						}
-
-						// calculate final shift and move window // moved on begginign so that direction is changed for next move
-						// finalHorShift = horShiftDistance * horDirection;
-						// finalVerShift = verShiftDistance * verDirection;
-						BFS.Window.SetLocation(windowHandle, windowRect.X+finalHorShift, windowRect.Y+finalVerShift);
-						// MessageBox.Show("Moved window " + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
-						// move with other windows inside
-						// move margins and splits ()
 					}
 					else // OUTSIDE MARGINS
 					{
-						HandleWindowOutsideMargins(marginInfo, windowHandle, monitorRect, windowRect, out horDirection, out verDirection);
-						
-						// move independently each window based on which margins we want to meet
-						// horDirection and  verDirection calculated in isWindowInsideOuterMargins based on which margins we are outside
-						if(horDirection == 0 && verDirection == 0)
-						{
-							MessageBox.Show($"Error OUTSIDE MARGINS no decision: horDirection {horDirection} verDirection {verDirection} ");
-						}
-						finalHorShift = horShiftDistance * horDirection;
-						finalVerShift = verShiftDistance * verDirection;
-						MessageBox.Show(" before set location");
-						BFS.Window.SetLocation(windowHandle, windowRect.X+finalHorShift, windowRect.Y+finalVerShift);
+						// determine direction and  move each window independently of movement of windows inside margins
+						HandleWindowOutsideMargins(marginInfo, windowHandle, monitorRect, windowRect);
 					}
 
 
@@ -389,111 +309,164 @@
 			return windowIsInsideMargins;
 		}
 
-		public static void decideVerDirectionForOutsideMargins(MarginStatus marginInfo, IntPtr windowHandle, Rectangle monitorRect, Rectangle  windowRect, out int verDirection)
+		public static void decideVerDirectionForOutsideMargins(IntPtr windowHandle, out int verDirection)
 		{
 			MessageBox.Show("decideVerDirectionForOutsideMarigns");
-			string windowHandleKey = windowHandle.ToString() + "_outmargins_verdir";  // todo
+			string windowOutsideMarginsVerDirKey = windowHandle.ToString() + verDirPrefixForWindowOutsideMarginsKeyPostfix;
+			
+			Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
+			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
 			MarginStatus borderInfo = getWindowBorderStatus(monitorRect, windowRect);
 
-			// if (marginInfo.tooLow && marginInfo.tooHigh) // outside both margins
-			// {
-				if(windowRect.Height < monitorRect.Height) // window will fit in monitor
+			if(windowRect.Height < monitorRect.Height) // window will fit in monitor
+			{
+				if(borderInfo.tooHigh && !borderInfo.tooLow) verDirection = 1; // go down, back inside monitor
+				else if (!borderInfo.tooHigh && borderInfo.tooLow) verDirection = -1; // go up back, inside monitor
+				else if (!borderInfo.tooHigh && !borderInfo.tooLow) // in monitor borders
 				{
-					if(borderInfo.tooHigh && !borderInfo.tooLow) verDirection = 1; // go down, back inside monitor
-					else if (!borderInfo.tooHigh && borderInfo.tooLow) verDirection = -1; // go up back, inside monitor
-					else if (!borderInfo.tooHigh && !borderInfo.tooLow) // in monitor borders
+					if(keyAlreadyGenerated(windowOutsideMarginsVerDirKey))
 					{
-						if(keyAlreadyGenerated(windowHandleKey))
-						{
-							verDirection = readIntKey(windowHandleKey);
-							MessageBox.Show($"readIntKey verDirection: {verDirection}");
+						verDirection = readIntKey(windowOutsideMarginsVerDirKey);
+						MessageBox.Show($"readIntKey verDirection: {verDirection}");
 
-							if(verDirection == 0)
-							{
-								verDirection = 1; // move when inside monitor borders
-							}
-						}
-						else 
+						if(verDirection == 0)
 						{
-							verDirection = 1; // todo what dir when outside margins ver but in both monitor borders? random?
-							// BFS.ScriptSettings.WriteValue(windowHandleKey, verDirection.ToString());
+							verDirection = 1; // move when inside monitor borders
 						}
 					}
-					else // outside monitor up and down, move window down to show top
+					else 
 					{
-						verDirection = 1;
-						MessageBox.Show("warning window both to high and too low"); // todo remove?
+						verDirection = 1; // todo what dir when outside margins ver but in both monitor borders? random?
 					}
-				} 
-				else // window will never fit inside monitor borders because too high
-				{
-					verDirection = 0;
-					MessageBox.Show("window will never fit inside monitor borders because too high"); // todo remove?
 				}
-			// }
-			// else if (marginInfo.tooLow && !marginInfo.tooHigh) verDirection = -1; // force to go up
-			// else if (!marginInfo.tooLow && marginInfo.tooHigh) verDirection = 1; // force to go down
-			// else verDirection = 0; // vertically in margins, no move // todo really no move?
+				else // outside monitor up and down, move window down to show top
+				{
+					verDirection = 1;
+					MessageBox.Show("warning window both to high and too low"); // todo remove?
+				}
+			} 
+			else // window will never fit inside monitor borders because too high
+			{
+				verDirection = 0;
+				MessageBox.Show("window will never fit inside monitor borders because too high"); // todo remove?
+			}
+
 			MessageBox.Show($"verDirection: {verDirection}");
-			BFS.ScriptSettings.WriteValue(windowHandleKey, verDirection.ToString());
+			BFS.ScriptSettings.WriteValue(windowOutsideMarginsVerDirKey, verDirection.ToString());
 		}
 
-		public static void decideHorDirectionForOutsideMargins(MarginStatus marginInfo, IntPtr windowHandle, Rectangle monitorRect, Rectangle windowRect, out int horDirection)
+		public static void decideHorDirectionForOutsideMargins(IntPtr windowHandle, out int horDirection)
 		{
 			MessageBox.Show("decideHorDirectionForOutsideMargins");
-			string windowHandleKey = windowHandle.ToString() + "_outmargins_hordir"; // todo
+			string windowOutsideMarginsHorDirKey = windowHandle.ToString() + horDirPrefixForWindowOutsideMarginsKeyPostfix;
+
+			Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
+			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
 			MarginStatus borderInfo = getWindowBorderStatus(monitorRect, windowRect);
-
-			// if (marginInfo.tooLeft && marginInfo.tooRight) // outside both margins
-			// {
-				if (windowRect.Width < monitorRect.Width) // window will fit in monitor
+		
+			if (windowRect.Width < monitorRect.Width) // window will fit in monitor
+			{
+				if (borderInfo.tooRight && !borderInfo.tooLeft) horDirection = -1; // go left, back inside monitor
+				else if (!borderInfo.tooRight && borderInfo.tooLeft) horDirection = 1; // go right, back inside monitor
+				else if (!borderInfo.tooRight && !borderInfo.tooLeft) // in monitor borders
 				{
-					if (borderInfo.tooRight && !borderInfo.tooLeft) horDirection = -1; // go left, back inside monitor
-					else if (!borderInfo.tooRight && borderInfo.tooLeft) horDirection = 1; // go right, back inside monitor
-					else if (!borderInfo.tooRight && !borderInfo.tooLeft) // in monitor borders
+					if (keyAlreadyGenerated(windowOutsideMarginsHorDirKey))
 					{
-						if (keyAlreadyGenerated(windowHandleKey))
-						{
-							horDirection = readIntKey(windowHandleKey);
-							MessageBox.Show($"readIntKey horDirection: {horDirection}");
+						horDirection = readIntKey(windowOutsideMarginsHorDirKey);
+						MessageBox.Show($"readIntKey horDirection: {horDirection}");
 
-							if(horDirection == 0)
-							{
-								horDirection = 1; // move when inside monitor borders
-							}
-						}
-						else
+						if(horDirection == 0)
 						{
-							horDirection = 1; // todo what dir when outside margins hor but in both monitor borders? random?
-							// BFS.ScriptSettings.WriteValue(windowHandleKey, horDirection.ToString());
+							horDirection = 1; // move when inside monitor borders
 						}
 					}
-					else // outside monitor left and right, move window to the right to show left side
+					else
 					{
-						horDirection = 1;
-						MessageBox.Show("warning window both too right and too left"); // todo remove?
+						horDirection = 1; // todo what dir when outside margins hor but in both monitor borders? random?
 					}
 				}
-				else // window will never fit inside monitor borders bevause too wide
+				else // outside monitor left and right, move window to the right to show left side
 				{
-					horDirection = 0;
-					MessageBox.Show("window will never fit inside monitor borders because too wide"); // todo remove?
+					horDirection = 1;
+					MessageBox.Show("warning window both too right and too left"); // todo remove?
 				}
-			// }
-			// else if (marginInfo.tooLeft && !marginInfo.tooRight) horDirection = 1; // force to go right
-			// else if (!marginInfo.tooLeft && marginInfo.tooRight) horDirection = -1; // force to go left
-			// else horDirection = 0; // horizontally in margins, no move // todo really no move?
+			}
+			else // window will never fit inside monitor borders bevause too wide
+			{
+				horDirection = 0;
+				MessageBox.Show("window will never fit inside monitor borders because too wide"); // todo remove?
+			}
+
 			MessageBox.Show($"horDirection: {horDirection}");
-			BFS.ScriptSettings.WriteValue(windowHandleKey, horDirection.ToString());
+			BFS.ScriptSettings.WriteValue(windowOutsideMarginsHorDirKey, horDirection.ToString());
 		}
 
-		public static void HandleWindowOutsideMargins(MarginStatus marginInfo, IntPtr windowHandle, Rectangle monitorRect, Rectangle  windowRect,  out int horDirection, out int verDirection)
+		public static void shiftMargins()
+		{
+			verDirection = 
+			horDirection = 
+
+
+			// would hit monitor LEFT?
+			if (windowRect.X+finalHorShift <= monitorRect.X) 
+			{
+				MessageBox.Show($"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} ({windowRect.X+finalHorShift}) <= monitorRect.X {monitorRect.X}");
+				horDirection = 1;
+			}
+
+			// would hit monitor RIGHT?
+			if (windowRect.X+finalHorShift + windowRect.Width >= monitorRect.X + monitorRect.Width)
+			{
+				MessageBox.Show($@"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} +windowRect.Width {windowRect.Width} ({windowRect.X+finalHorShift+windowRect.Width}) 
+								>=
+								monitorRect.X {monitorRect.X} + monitorRect.Width {monitorRect.Width} ({monitorRect.X+monitorRect.Width})");
+				horDirection = -1;
+			}
+			
+			// would hit monitor TOP?
+			if (windowRect.Y+finalVerShift <= monitorRect.Y)
+			{				
+				MessageBox.Show($"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} ({windowRect.Y+finalVerShift}) <= monitorRect.Y {monitorRect.Y}");
+				verDirection = 1;
+			}
+			
+			// would hit monitor BOTTOM?
+			if(windowRect.Y+finalVerShift + windowRect.Height >= monitorRect.Y + monitorRect.Height)
+			{
+				MessageBox.Show($@"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} +windowRect.Height {windowRect.Height} ({windowRect.Y+finalVerShift+windowRect.Height}) 
+								>= 
+								monitorRect.Y {monitorRect.Y} + monitorRect.Height {monitorRect.Height} ({monitorRect.Y+monitorRect.Height})");
+				verDirection = -1;
+			}
+		}
+
+		public static void HandleWindowInsideMargins(IntPtr windowHandle)
+		{
+			int horDirectionInsideMargins = readIntKey(horDirectionInsideMarginsKey); // todo if?
+			int verDirectionInsideMargins = readIntKey(verDirectionInsideMarginsKey);
+
+			if(horDirection == 0 && verDirection == 0)
+			{
+				MessageBox.Show($"Error INSIDE MARGINS no direction horDirection {horDirectionInsideMargins} verDirection {verDirectionInsideMargins} "); // todo remove?
+			}
+
+			SetNewLocation(windowHandle, horDirectionInsideMargins, verDirectionInsideMargins); 
+		}
+
+		public static void HandleWindowOutsideMargins(MarginStatus marginInfo, IntPtr windowHandle, Rectangle monitorRect, Rectangle  windowRect)
 		{
 			MessageBox.Show("HandleWindowOutsideMargins");
 
-			// decide vertical direction
-			decideVerDirectionForOutsideMargins(marginInfo, windowHandle, monitorRect, windowRect, out verDirection);
-			decideHorDirectionForOutsideMargins(marginInfo, windowHandle, monitorRect, windowRect, out horDirection);
+			int horDirection = 0, verDirection = 0;
+			decideVerDirectionForOutsideMargins(windowHandle, out verDirection);
+			decideHorDirectionForOutsideMargins(windowHandle, out horDirection);
+						
+			if(horDirection == 0 && verDirection == 0)
+			{
+				MessageBox.Show($"Error OUTSIDE MARGINS no decision: horDirection {horDirection} verDirection {verDirection} "); // todo remove?
+			}
+
+			SetNewLocation(windowHandle, horDirection, verDirection); 
 
 			MessageBox.Show("HandleWindowOutsideMargins end");
 		}
@@ -1067,7 +1040,7 @@
 			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
 			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
 			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
-			// int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
+			int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
 			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
 			int horizontalTopSplit = bordersDict[monitorRectAsID][horizontalTopSplitKey];
 			int horizontalBottomSplit = bordersDict[monitorRectAsID][horizontalBottomSplitKey];
@@ -1231,6 +1204,19 @@
 
 			MessageBox.Show($"Did not find ANY monitor for window {windowID} [X {windowRect.X}, Y {windowRect.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
 			return default; 
+		}
+
+		public static void SetNewLocation(IntPtr windowHandle, int horDirection, int verDirection)
+		{
+			// todo check if out of bounds and maybe set it to be exactly on border?
+			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+
+			int horShift = horShiftDistance * horDirection;
+			int verShift = verShiftDistance * verDirection;
+
+			// MessageBox.Show(" before set location");
+			BFS.Window.SetLocation(windowHandle, windowRect.X + horShift, windowRect.Y + verShift); 
+			// MessageBox.Show("Moved window " + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
 		}
 
 		public static string MergeKeyCodes(params string[] keyCodes)
