@@ -12,6 +12,7 @@
 	// - TitleBar Button owner when run by a TitleBar Button
 	// - Jump List owner when run from a Taskbar Jump List
 	// - Currently focused window if none of these match
+
 	public static class DisplayFusionFunction
 	{
 		public static int shiftRange = 100;
@@ -40,7 +41,11 @@
 		public static string verDirPrefixForWindowOutsideMarginsKeyPostfix = "OutsideMarginsVerDirectionKeyPostfix";
 		public static string horDirPrefixForWindowOutsideMarginsKeyPostfix = "OutsideMarginsHorDirectionKeyPostfix";
 
-		public static DateTime lastBordersRecalc = DateTime.MinValue;
+		public static string verMarginsDirectionKey = "verMarginsDirectionKey";
+		public static string horMarginsDirectionKey = "horMarginsDirectionKey";
+		public static string lastHorShiftKey = "lastHorShiftKey";
+		public static string lastVerShiftKey = "lastVerShiftKey";
+
 		public static uint moveWindowTimerDelay = 1000; 
 
 		public static string KEY_SHIFT = "16";
@@ -48,9 +53,6 @@
 		public static string KEY_A = "65";
 		public static string KEY_Q = "81";
 
-		// to store marings and splits for each monitor
-		// e.g. bordersDict[monitorRectAsID][horizontalTopSplitKey] = 10;
-		public static Dictionary<Rectangle, Dictionary<string, int>> bordersDict = new Dictionary<Rectangle, Dictionary<string, int>>();
 		public static Dictionary<string, int> windowDirectionsDict = new Dictionary<string, int>();
 		public enum WindowHorizontalPosition
 		{
@@ -209,29 +211,18 @@
 					{
 						continue;
 					}
+					// todo add ignore windows with size = monitor size because fullscreen are not considered maximized?
 
-					MessageBox.Show("Processing window" + BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle));
-					Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
-					Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+					// MessageBox.Show("Processing window" + BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle));
 
-					if(monitorRect.Width == 0 || monitorRect.Height == 0)
-					{
-						MessageBox.Show("STOP move no monitor"); // todo just ignore this window?
-						enableWindowsPositionTimedShift = false;
-						break;
-					}
-
-
-			 		MarginStatus marginInfo = getWindowMarginsStatus(monitorRect, windowRect);
-					if (isWindowInsideMargins(marginInfo))
+					if (wasWindowInsideMargins(windowHandle))
 					{
 						HandleWindowInsideMargins(windowHandle);
-
 					}
 					else // OUTSIDE MARGINS
 					{
 						// determine direction and  move each window independently of movement of windows inside margins
-						HandleWindowOutsideMargins(marginInfo, windowHandle, monitorRect, windowRect);
+						HandleWindowOutsideMargins(windowHandle);
 					}
 
 
@@ -242,37 +233,7 @@
 			MessageBox.Show("Stopping move");
 		}
 
-		public static MarginStatus getWindowMarginsStatus(Rectangle monitorRect, Rectangle windowRect)
-		{
-			int newLeft = windowRect.X;
-			int newTop = windowRect.Y;
-			int newRight = newLeft + windowRect.Width;
-			int newBottom = newTop + windowRect.Height;
-
-			int topMargin = bordersDict[monitorRect][topMarginKey];
-			int bottomMargin = bordersDict[monitorRect][bottomMarginKey];
-			int leftMargin = bordersDict[monitorRect][leftMarginKey];
-			int rightMargin = bordersDict[monitorRect][rightMarginKey];
-
-			var marginStatus = new MarginStatus
-			{
-				tooHigh = newTop < topMargin,
-				tooLow = newBottom > bottomMargin,
-				tooLeft = newLeft < leftMargin,
-				tooRight = newRight > rightMargin
-			};
-			if(isWindowInsideMargins(marginStatus)) // INSIDE margins
-			{
-				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] INSIDE margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
-			}
-			else // OUTSIDE margins
-			{
-				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] outside margins [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
-			}
-			return marginStatus;
-		}
-
-		public static MarginStatus getWindowBorderStatus(Rectangle monitorRect, Rectangle windowRect)
+		public static MarginStatus getWindowBorderStatus(Rectangle monitorRect, Rectangle windowRect, string name)
 		{
 			// todo add shift argument = where window will be?
 			int newLeft = windowRect.X;
@@ -292,175 +253,225 @@
 				tooLeft = newLeft < leftMargin,
 				tooRight = newRight > rightMargin
 			};
-			if(isWindowInsideMargins(marginStatus)) // INSIDE margins
+
+			if(marginStatus.tooHigh)
 			{
-				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] INSIDE monitor borders [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
+				MessageBox.Show($"Window >>{name}<< [.L{newLeft} .R{newRight} .T{newTop} .B{newBottom}] too high in monitor [.L{leftMargin} .R{rightMargin} .T{topMargin} .B{bottomMargin}]");
 			}
-			else // OUTSIDE margins
+			bool inside = !marginStatus.tooHigh && !marginStatus.tooLow && !marginStatus.tooLeft & !marginStatus.tooRight;
+
+			if(inside)
 			{
-				MessageBox.Show($"Window [.X{newLeft} .Y{newTop} ({newRight}/{newBottom})] outside monitor borders [.T{topMargin} .B{bottomMargin} .L{leftMargin} .R{rightMargin}]");
+				// MessageBox.Show($"Window [.L{newLeft} .R{newRight} .T{newTop} .B{newBottom}] INSIDE monitor borders [.L{leftMargin} .R{rightMargin} .T{topMargin} .B{bottomMargin}]");
 			}
+			else
+			{
+				// MessageBox.Show($"Window [.L{newLeft} .R{newRight} .T{newTop} .B{newBottom}] outside monitor borders [.L{leftMargin} .R{rightMargin} .T{topMargin} .B{bottomMargin}]");
+			}
+
 			return marginStatus;
 		}
 
-		public static bool isWindowInsideMargins(MarginStatus marginInfo)
+		public static bool wasWindowInsideMargins(IntPtr windowHandle)
 		{
-			bool windowIsInsideMargins = !(marginInfo.tooHigh || marginInfo.tooLow || marginInfo.tooLeft || marginInfo.tooRight); // outside margis when any flag true
+			Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
+			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+
+			int verLastMarginShift = getKeyValForMonitor(monitorRect, lastVerShiftKey);
+			int horLastMarginShift = getKeyValForMonitor(monitorRect, lastHorShiftKey);
+
+			int topMarginOld = getKeyValForMonitor(monitorRect, topMarginKey) - verLastMarginShift;
+			int bottomMarginOld = getKeyValForMonitor(monitorRect, bottomMarginKey) - verLastMarginShift;
+			int leftMarginOld = getKeyValForMonitor(monitorRect, leftMarginKey) - horLastMarginShift;
+			int rightMarginOld = getKeyValForMonitor(monitorRect, rightMarginKey) - horLastMarginShift;
+
+			int topMarginCurr = getKeyValForMonitor(monitorRect, topMarginKey); // todo remove
+			int bottomMarginCurr = getKeyValForMonitor(monitorRect, bottomMarginKey);
+			int leftMarginCurr = getKeyValForMonitor(monitorRect, leftMarginKey);
+			int rightMarginCurrd = getKeyValForMonitor(monitorRect, rightMarginKey);
+
+			int currLeft = windowRect.X;
+			int currTop = windowRect.Y;
+			int currRight = currLeft + windowRect.Width;
+			int currBottom = currTop + windowRect.Height;
+
+			bool tooHigh = currTop < topMarginOld;
+			bool tooLow = currBottom > bottomMarginOld;
+			bool tooLeft = currLeft < leftMarginOld;
+			bool tooRight = currRight > rightMarginOld;
+			
+			bool windowIsInsideMargins = !tooHigh && !tooLow && !tooLeft & !tooRight; // outside margis when any flag true
+			
+			if(windowIsInsideMargins) // INSIDE margins
+			{
+				MessageBox.Show($"Window [.L{currLeft} .R{currRight} .T{currTop} .B{currBottom}] was INSIDE margins[.L{leftMarginOld}->{leftMarginCurr} .R{rightMarginOld}->{rightMarginCurrd} .T{topMarginOld}->{topMarginCurr} .B{bottomMarginOld}->{bottomMarginCurr}]");
+			}
+			else // OUTSIDE margins
+			{
+				MessageBox.Show($"Window [.L{currLeft} .R{currRight} .T{currTop} .B{currBottom}] was outside margins[.L{leftMarginOld}->{leftMarginCurr} .R{rightMarginOld}->{rightMarginCurrd} .T{topMarginOld}->{topMarginCurr} .B{bottomMarginOld}->{bottomMarginCurr}]");
+			}
+
 			return windowIsInsideMargins;
 		}
 
-		public static void decideVerDirectionForOutsideMargins(IntPtr windowHandle, out int verDirection)
+		public static int decideVerDirection(Rectangle windowRect, Rectangle monitorRect, string directionKey, string name)
 		{
-			MessageBox.Show("decideVerDirectionForOutsideMarigns");
-			string windowOutsideMarginsVerDirKey = windowHandle.ToString() + verDirPrefixForWindowOutsideMarginsKeyPostfix;
-			
-			Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
-			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
-			MarginStatus borderInfo = getWindowBorderStatus(monitorRect, windowRect);
+			int resultDirection;
+			MarginStatus borderInfo = getWindowBorderStatus(monitorRect, windowRect, name);
 
 			if(windowRect.Height < monitorRect.Height) // window will fit in monitor
 			{
-				if(borderInfo.tooHigh && !borderInfo.tooLow) verDirection = 1; // go down, back inside monitor
-				else if (!borderInfo.tooHigh && borderInfo.tooLow) verDirection = -1; // go up back, inside monitor
+				if(borderInfo.tooHigh && !borderInfo.tooLow) resultDirection = 1; // go down, back inside monitor
+				else if (!borderInfo.tooHigh && borderInfo.tooLow) resultDirection = -1; // go up back, inside monitor
 				else if (!borderInfo.tooHigh && !borderInfo.tooLow) // in monitor borders
 				{
-					if(keyAlreadyGenerated(windowOutsideMarginsVerDirKey))
+					if(keyAlreadyGenerated(directionKey))
 					{
-						verDirection = readIntKey(windowOutsideMarginsVerDirKey);
-						MessageBox.Show($"readIntKey verDirection: {verDirection}");
+						resultDirection = readIntKey(directionKey);
+						// MessageBox.Show($"readIntKey verDirection: {resultDirection}");
 
-						if(verDirection == 0)
+						if(resultDirection == 0)
 						{
-							verDirection = 1; // move when inside monitor borders
+							resultDirection = 1; // move when inside monitor borders
 						}
 					}
 					else 
 					{
-						verDirection = 1; // todo what dir when outside margins ver but in both monitor borders? random?
+						resultDirection = 1; // todo what dir when outside margins ver but in both monitor borders? random?
 					}
 				}
 				else // outside monitor up and down, move window down to show top
 				{
-					verDirection = 1;
+					resultDirection = 1;
 					MessageBox.Show("warning window both to high and too low"); // todo remove?
 				}
 			} 
 			else // window will never fit inside monitor borders because too high
 			{
-				verDirection = 0;
+				resultDirection = 0;
 				MessageBox.Show("window will never fit inside monitor borders because too high"); // todo remove?
 			}
-
-			MessageBox.Show($"verDirection: {verDirection}");
-			BFS.ScriptSettings.WriteValue(windowOutsideMarginsVerDirKey, verDirection.ToString());
+			BFS.ScriptSettings.WriteValue(directionKey, resultDirection.ToString());
+			return resultDirection;
 		}
 
-		public static void decideHorDirectionForOutsideMargins(IntPtr windowHandle, out int horDirection)
+		public static int decideHorDirection(Rectangle windowRect, Rectangle monitorRect, string directionKey, string name)
 		{
-			MessageBox.Show("decideHorDirectionForOutsideMargins");
-			string windowOutsideMarginsHorDirKey = windowHandle.ToString() + horDirPrefixForWindowOutsideMarginsKeyPostfix;
+			int resultDirection;
+			MarginStatus borderInfo = getWindowBorderStatus(monitorRect, windowRect, name);
 
-			Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
-			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
-			MarginStatus borderInfo = getWindowBorderStatus(monitorRect, windowRect);
-		
 			if (windowRect.Width < monitorRect.Width) // window will fit in monitor
 			{
-				if (borderInfo.tooRight && !borderInfo.tooLeft) horDirection = -1; // go left, back inside monitor
-				else if (!borderInfo.tooRight && borderInfo.tooLeft) horDirection = 1; // go right, back inside monitor
+				if (borderInfo.tooRight && !borderInfo.tooLeft) resultDirection = -1; // go left, back inside monitor
+				else if (!borderInfo.tooRight && borderInfo.tooLeft) resultDirection = 1; // go right, back inside monitor
 				else if (!borderInfo.tooRight && !borderInfo.tooLeft) // in monitor borders
 				{
-					if (keyAlreadyGenerated(windowOutsideMarginsHorDirKey))
+					if (keyAlreadyGenerated(directionKey))
 					{
-						horDirection = readIntKey(windowOutsideMarginsHorDirKey);
-						MessageBox.Show($"readIntKey horDirection: {horDirection}");
+						resultDirection = readIntKey(directionKey);
+						// MessageBox.Show($"readIntKey horDirection: {resultDirection}");
 
-						if(horDirection == 0)
+						if(resultDirection == 0)
 						{
-							horDirection = 1; // move when inside monitor borders
+							resultDirection = 1; // move when inside monitor borders
 						}
 					}
 					else
 					{
-						horDirection = 1; // todo what dir when outside margins hor but in both monitor borders? random?
+						resultDirection = 1; // todo what dir when outside margins hor but in both monitor borders? random?
 					}
 				}
 				else // outside monitor left and right, move window to the right to show left side
 				{
-					horDirection = 1;
+					resultDirection = 1;
 					MessageBox.Show("warning window both too right and too left"); // todo remove?
 				}
 			}
 			else // window will never fit inside monitor borders bevause too wide
 			{
-				horDirection = 0;
+				resultDirection = 0;
 				MessageBox.Show("window will never fit inside monitor borders because too wide"); // todo remove?
 			}
-
-			MessageBox.Show($"horDirection: {horDirection}");
-			BFS.ScriptSettings.WriteValue(windowOutsideMarginsHorDirKey, horDirection.ToString());
+			BFS.ScriptSettings.WriteValue(directionKey, resultDirection.ToString());
+			return resultDirection;
 		}
 
 		public static void shiftMargins()
 		{
-			verDirection = 
-			horDirection = 
-
-
-			// would hit monitor LEFT?
-			if (windowRect.X+finalHorShift <= monitorRect.X) 
+			Rectangle[] allMonitors = BFS.Monitor.GetMonitorBoundsNoSplits();
+			foreach (Rectangle monitorRect in allMonitors)
 			{
-				MessageBox.Show($"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} ({windowRect.X+finalHorShift}) <= monitorRect.X {monitorRect.X}");
-				horDirection = 1;
-			}
+				int topMargin = getKeyValForMonitor(monitorRect, topMarginKey);
+				int bottomMargin = getKeyValForMonitor(monitorRect, bottomMarginKey);
+				int leftMargin = getKeyValForMonitor(monitorRect, leftMarginKey);
+				int rightMargin = getKeyValForMonitor(monitorRect, rightMarginKey);
+				
+				Rectangle marginsRect = new Rectangle(
+					leftMargin, // x
+					topMargin, // y
+					rightMargin - leftMargin, // width
+					bottomMargin - topMargin // height
+				);
 
-			// would hit monitor RIGHT?
-			if (windowRect.X+finalHorShift + windowRect.Width >= monitorRect.X + monitorRect.Width)
-			{
-				MessageBox.Show($@"windowRect.X {windowRect.X} +finalHorShift {finalHorShift} +windowRect.Width {windowRect.Width} ({windowRect.X+finalHorShift+windowRect.Width}) 
-								>=
-								monitorRect.X {monitorRect.X} + monitorRect.Width {monitorRect.Width} ({monitorRect.X+monitorRect.Width})");
-				horDirection = -1;
-			}
-			
-			// would hit monitor TOP?
-			if (windowRect.Y+finalVerShift <= monitorRect.Y)
-			{				
-				MessageBox.Show($"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} ({windowRect.Y+finalVerShift}) <= monitorRect.Y {monitorRect.Y}");
-				verDirection = 1;
-			}
-			
-			// would hit monitor BOTTOM?
-			if(windowRect.Y+finalVerShift + windowRect.Height >= monitorRect.Y + monitorRect.Height)
-			{
-				MessageBox.Show($@"windowRect.Y {windowRect.Y} +finalVerShift {finalVerShift} +windowRect.Height {windowRect.Height} ({windowRect.Y+finalVerShift+windowRect.Height}) 
-								>= 
-								monitorRect.Y {monitorRect.Y} + monitorRect.Height {monitorRect.Height} ({monitorRect.Y+monitorRect.Height})");
-				verDirection = -1;
+				MessageBox.Show($"shifting margins [.L{leftMargin} .R{rightMargin} .T{topMargin} .B{bottomMargin}] for monitor  [.L{monitorRect.X} .R{monitorRect.X+monitorRect.Width} .T{monitorRect.Y} .B{monitorRect.Y+monitorRect.Height}]");
+
+				string  verMarginsDirectionForMonitorKey = RectAsKey(monitorRect) + verMarginsDirectionKey;
+				string  horMarginsDirectionForMonitorKey = RectAsKey(monitorRect) + horMarginsDirectionKey;
+
+				int verDirection = decideVerDirection(marginsRect, monitorRect, verMarginsDirectionForMonitorKey, "margin ver");
+				int horDirection = decideHorDirection(marginsRect, monitorRect, horMarginsDirectionForMonitorKey, "margin hor");
+
+				if(horDirection == 0 && verDirection == 0)
+				{
+					MessageBox.Show($"Error MARGINS no decision: horDirection {horDirection} verDirection {verDirection} "); // todo remove?
+				}
+
+				int verShift = verShiftDistance * verDirection;
+				int horShift = horShiftDistance * horDirection;
+
+				setKeyValForMonitor(monitorRect, topMarginKey, topMargin + verShift);
+				setKeyValForMonitor(monitorRect, bottomMarginKey, bottomMargin + verShift);
+				setKeyValForMonitor(monitorRect, leftMarginKey, leftMargin + horShift);
+				setKeyValForMonitor(monitorRect, rightMarginKey, rightMargin + horShift);
+				setKeyValForMonitor(monitorRect, horizontalTopSplitKey, getKeyValForMonitor(monitorRect, horizontalTopSplitKey) + horShift);
+				setKeyValForMonitor(monitorRect, horizontalMiddleSplitKey, getKeyValForMonitor(monitorRect, horizontalMiddleSplitKey) + horShift);
+				setKeyValForMonitor(monitorRect, horizontalBottomSplitKey, getKeyValForMonitor(monitorRect, horizontalBottomSplitKey) + horShift);
+				setKeyValForMonitor(monitorRect, verticalMiddleSplitKey, getKeyValForMonitor(monitorRect, verticalMiddleSplitKey) + verShift);
+				setKeyValForMonitor(monitorRect, verticalLeftSplitKey, getKeyValForMonitor(monitorRect, verticalLeftSplitKey) + verShift);
+				setKeyValForMonitor(monitorRect, verticalRightSplitKey, getKeyValForMonitor(monitorRect, verticalRightSplitKey) + verShift);
+
+				setKeyValForMonitor(monitorRect, lastVerShiftKey, verShift);
+				setKeyValForMonitor(monitorRect, lastHorShiftKey, horShift);
 			}
 		}
 
 		public static void HandleWindowInsideMargins(IntPtr windowHandle)
 		{
-			int horDirectionInsideMargins = readIntKey(horDirectionInsideMarginsKey); // todo if?
-			int verDirectionInsideMargins = readIntKey(verDirectionInsideMarginsKey);
+			int verDirection = readIntKey(verMarginsDirectionKey);
+			int horDirection = readIntKey(horMarginsDirectionKey);
 
 			if(horDirection == 0 && verDirection == 0)
 			{
-				MessageBox.Show($"Error INSIDE MARGINS no direction horDirection {horDirectionInsideMargins} verDirection {verDirectionInsideMargins} "); // todo remove?
+				MessageBox.Show($"Error INSIDE MARGINS no direction horDirection {horDirection} verDirection {verDirection} "); // todo remove?
 			}
 
-			SetNewLocation(windowHandle, horDirectionInsideMargins, verDirectionInsideMargins); 
+			SetNewLocation(windowHandle, horDirection, verDirection); 
 		}
 
-		public static void HandleWindowOutsideMargins(MarginStatus marginInfo, IntPtr windowHandle, Rectangle monitorRect, Rectangle  windowRect)
+		public static void HandleWindowOutsideMargins(IntPtr windowHandle)
 		{
-			MessageBox.Show("HandleWindowOutsideMargins");
+			// MessageBox.Show("HandleWindowOutsideMargins");
+			
+			string windowOutsideMarginsVerDirKey = windowHandle.ToString() + verDirPrefixForWindowOutsideMarginsKeyPostfix;
+			string windowOutsideMarginsHorDirKey = windowHandle.ToString() + horDirPrefixForWindowOutsideMarginsKeyPostfix;
+			
+			Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
+			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
 
-			int horDirection = 0, verDirection = 0;
-			decideVerDirectionForOutsideMargins(windowHandle, out verDirection);
-			decideHorDirectionForOutsideMargins(windowHandle, out horDirection);
-						
+			string name = BFS.Window.GetText(windowHandle);
+			int verDirection = decideVerDirection(windowRect, monitorRect, windowOutsideMarginsVerDirKey, name);
+			int horDirection = decideHorDirection(windowRect, monitorRect, windowOutsideMarginsHorDirKey, name);
+
 			if(horDirection == 0 && verDirection == 0)
 			{
 				MessageBox.Show($"Error OUTSIDE MARGINS no decision: horDirection {horDirection} verDirection {verDirection} "); // todo remove?
@@ -468,15 +479,9 @@
 
 			SetNewLocation(windowHandle, horDirection, verDirection); 
 
-			MessageBox.Show("HandleWindowOutsideMargins end");
+			// MessageBox.Show("HandleWindowOutsideMargins end");
 		}
 
-		// public static MoveSingleWIndow(IntPtr windowHandle, int shiftHor, int shiftVer)
-		// {
-		// 	Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
-		// 	BFS.Window.SetLocation(windowHandle, windowRect.X+finalHorShift, windowRect.Y+finalVerShift);
-		// }
-		
 		public static void SingleWindow100(IntPtr windowHandle)
 		{
 			SingleWindowX(windowHandle, 1);
@@ -593,7 +598,12 @@
 			return random.Next(start, end);
 		}
 
-		
+		public static int GetRandomDirection()
+		{
+			// return -1 or 1
+			Random random = new Random();
+			return random.Next(2) * 2 - 1;
+		}
 
 		// topMarginKey, bottomMarginKey, leftMarginKey, rightMarginKey - outer borders
 		// horizontalTopSplitKey - upper horizontal split for e.g bottom border on topmost window in 3 window horizontal split
@@ -604,76 +614,74 @@
 		// verticalRightSplitKey - right border when doing 1-1-1 and 2-1 splits
 		public static void generateSplitBordersAllMonitors()
 		{
-
 			Rectangle[] allMonitors = BFS.Monitor.GetMonitorBoundsNoSplits();
-			// uint[] allMonitors = BFS.Monitor.GetMonitorIDs();
-
-			foreach (Rectangle monitorRectAsID in allMonitors)
+			foreach (Rectangle monitorRect in allMonitors)
 			{
-				Rectangle monitorRect = monitorRectAsID; //BFS.Monitor.GetMonitorBoundsByID(monitorRectAsID);
-				uint monitorID = BFS.Monitor.GetMonitorIDByRect(monitorRectAsID);
+				setKeyValForMonitorWhenEmpty(monitorRect, topMarginKey,  monitorRect.Y + GetRandomShift(0, shiftRange));
+				setKeyValForMonitorWhenEmpty(monitorRect, bottomMarginKey, monitorRect.Y + monitorRect.Height - GetRandomShift(0, shiftRange));
+				setKeyValForMonitorWhenEmpty(monitorRect, leftMarginKey, monitorRect.X + GetRandomShift(0, shiftRange));
+				setKeyValForMonitorWhenEmpty(monitorRect, rightMarginKey, monitorRect.X + monitorRect.Width - GetRandomShift(0, shiftRange));
+				setKeyValForMonitorWhenEmpty(monitorRect, horizontalTopSplitKey, monitorRect.Y + monitorRect.Height / 3 + GetRandomShift(shiftRange));
+				setKeyValForMonitorWhenEmpty(monitorRect, horizontalMiddleSplitKey, monitorRect.Y + monitorRect.Height / 2 + GetRandomShift(shiftRange));
+				setKeyValForMonitorWhenEmpty(monitorRect, horizontalBottomSplitKey, monitorRect.Y + monitorRect.Height * 2 / 3 + GetRandomShift(shiftRange));
+				setKeyValForMonitorWhenEmpty(monitorRect, verticalLeftSplitKey, monitorRect.X + monitorRect.Width / 3 + GetRandomShift(shiftRange));
+				setKeyValForMonitorWhenEmpty(monitorRect, verticalMiddleSplitKey, monitorRect.X + monitorRect.Width / 2 + GetRandomShift(shiftRange));
+				setKeyValForMonitorWhenEmpty(monitorRect, verticalRightSplitKey, monitorRect.X + monitorRect.Width * 2 / 3 + GetRandomShift(shiftRange));
 
-				// todo add check for each monitor (not all one flag because new can be connected)
-				// bool alreadyGenerated = readBoolKey(bordersAlreadyGeneratedKey);
-
-				// create dict of borders for this monitorRectAsID if not present 
-				if (!bordersDict.TryGetValue(monitorRectAsID, out Dictionary<string,int> borders))
-				{
-					bordersDict[monitorRectAsID] = new Dictionary<string,int>();
-				}
-
-				generateSplitBorder(monitorRectAsID, topMarginKey,  monitorRect.Y + GetRandomShift(0, shiftRange));
-				generateSplitBorder(monitorRectAsID, bottomMarginKey, monitorRect.Y + monitorRect.Height - GetRandomShift(0, shiftRange));
-				generateSplitBorder(monitorRectAsID, leftMarginKey, monitorRect.X + GetRandomShift(0, shiftRange));
-				generateSplitBorder(monitorRectAsID, rightMarginKey, monitorRect.X + monitorRect.Width - GetRandomShift(0, shiftRange));
-				generateSplitBorder(monitorRectAsID, horizontalTopSplitKey, monitorRect.Y + monitorRect.Height / 3 + GetRandomShift(shiftRange));
-				generateSplitBorder(monitorRectAsID, horizontalMiddleSplitKey, monitorRect.Y + monitorRect.Height / 2 + GetRandomShift(shiftRange));
-				generateSplitBorder(monitorRectAsID, horizontalBottomSplitKey, monitorRect.Y + monitorRect.Height * 2 / 3 + GetRandomShift(shiftRange));
-				generateSplitBorder(monitorRectAsID, verticalLeftSplitKey, monitorRect.X + monitorRect.Width / 3 + GetRandomShift(shiftRange));
-				generateSplitBorder(monitorRectAsID, verticalMiddleSplitKey, monitorRect.X + monitorRect.Width / 2 + GetRandomShift(shiftRange));
-				generateSplitBorder(monitorRectAsID, verticalRightSplitKey, monitorRect.X + monitorRect.Width * 2 / 3 + GetRandomShift(shiftRange));
+				setKeyValForMonitorWhenEmpty(monitorRect, verMarginsDirectionKey,GetRandomDirection());
+				setKeyValForMonitorWhenEmpty(monitorRect, horMarginsDirectionKey,GetRandomDirection());
+				// uint monitorID = BFS.Monitor.GetMonitorIDByRect(monitorRectAsID);
 				//MessageBox.Show($"generateSplitBorder monitor ({monitorID}) X.{monitorRect.X} Y.{monitorRect.Y} [{monitorRect.Width}/{monitorRect.Height}] vemidsplit: {readIntKey(rightMarginKey+"_2")}");
 			}
-
-			// todo remove?
-			DateTime currentTime = DateTime.Now; // Pobranie aktualnego czasu
-			lastBordersRecalc = currentTime;
 		}
 
-		public static void generateSplitBorder(Rectangle monitorRectAsID, string borderKey, int newValue)
+		public static void setKeyValForMonitorWhenEmpty(Rectangle monitorRectAsID, string key, int newValue)
 		{
-			// use for storing in settings
-			string monitorBorderkey = borderKey + "_" + monitorRectAsID.ToString();
-			BFS.ScriptSettings.WriteValue(monitorBorderkey, ""); // TODO remove
+			string fullMonitorKey = key + "_" + RectAsKey(monitorRectAsID);
 
-			if (keyAlreadyGenerated(monitorBorderkey))
+			if (keyAlreadyGenerated(fullMonitorKey))
 			{
 				// ignore received new value and override with stored value
-				//MessageBox.Show($"Key already generated: {monitorBorderkey}");
-				newValue = readIntKey(monitorBorderkey);
+				newValue = readIntKey(fullMonitorKey);
 			}
 			else
 			{
 				// save in settings
-				BFS.ScriptSettings.WriteValue(monitorBorderkey, newValue.ToString());
+				BFS.ScriptSettings.WriteValue(fullMonitorKey, newValue.ToString());
 			}
+		}
+		public static void setKeyValForMonitor(Rectangle monitorRectAsID, string key, int newValue)
+		{
+			string fullMonitorKey = key + "_" + RectAsKey(monitorRectAsID);
 
-				// try adding to bordersDict
-			if (bordersDict[monitorRectAsID].TryAdd(borderKey, newValue))
+			// save in settings
+			BFS.ScriptSettings.WriteValue(fullMonitorKey, newValue.ToString());
+		}
+
+		public static int getKeyValForMonitor(Rectangle monitorRectAsID, string key)
+		{
+			string fullMonitorKey = key + "_" + RectAsKey(monitorRectAsID);
+			
+			int result;
+			if (keyAlreadyGenerated(fullMonitorKey))
 			{
+				result = readIntKey(fullMonitorKey);
 			}
-
-			uint monitorID = BFS.Monitor.GetMonitorIDByRect(monitorRectAsID);
-			//MessageBox.Show($"generateSplitBorder ({monitorID})[{monitorBorderkey}] W:{newValue.ToString()}, R:{readIntKey(monitorBorderkey)}");
+			else
+			{
+				result = 0;
+				MessageBox.Show($"ERROR no storred setting for monitor key {fullMonitorKey}");
+			}
+			return result;
 		}
 		
 		public static void Left(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
-			int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
-			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
-			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int verticalMiddleSplit = getKeyValForMonitor(monitorRectAsID, verticalMiddleSplitKey);
+			int leftMargin = getKeyValForMonitor(monitorRectAsID, leftMarginKey);
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
 
 			if (BFS.Input.IsKeyDown(KEY_SHIFT))
 			{
@@ -697,10 +705,10 @@
 		public static void Right(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
-			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
-			int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
-			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int rightMargin = getKeyValForMonitor(monitorRectAsID, rightMarginKey);
+			int verticalMiddleSplit = getKeyValForMonitor(monitorRectAsID, verticalMiddleSplitKey);
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
 
 			uint monitorID = BFS.Monitor.GetMonitorIDByRect(monitorRectAsID);
 			// MessageBox.Show($"Right monitorRectAsID {monitorID}  verticalMiddleSplit {verticalMiddleSplit}");
@@ -728,10 +736,10 @@
 		public static void TopLeft(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
-			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
-			int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int leftMargin = getKeyValForMonitor(monitorRectAsID, leftMarginKey);
+			int verticalMiddleSplit = getKeyValForMonitor(monitorRectAsID, verticalMiddleSplitKey);
+			int horizontalMiddleSplit = getKeyValForMonitor(monitorRectAsID, horizontalMiddleSplitKey);
 
 			int width = verticalMiddleSplit - leftMargin;
 			int height = horizontalMiddleSplit - topMargin;
@@ -742,10 +750,10 @@
 		public static void TopRight(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
-			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
-			int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int rightMargin = getKeyValForMonitor(monitorRectAsID, rightMarginKey);
+			int verticalMiddleSplit = getKeyValForMonitor(monitorRectAsID, verticalMiddleSplitKey);
+			int horizontalMiddleSplit = getKeyValForMonitor(monitorRectAsID, horizontalMiddleSplitKey);
 
 			int width = rightMargin - verticalMiddleSplit;
 			int height = horizontalMiddleSplit - topMargin;
@@ -756,10 +764,10 @@
 		public static void BottomLeft(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
-			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
-			int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
+			int leftMargin = getKeyValForMonitor(monitorRectAsID, leftMarginKey);
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
+			int verticalMiddleSplit = getKeyValForMonitor(monitorRectAsID, verticalMiddleSplitKey);
+			int horizontalMiddleSplit = getKeyValForMonitor(monitorRectAsID, horizontalMiddleSplitKey);
 
 			int width = verticalMiddleSplit - leftMargin;
 			int height = bottomMargin - horizontalMiddleSplit;
@@ -770,10 +778,10 @@
 		public static void BottomRight(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
-			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
-			int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
+			int rightMargin = getKeyValForMonitor(monitorRectAsID, rightMarginKey);
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
+			int verticalMiddleSplit = getKeyValForMonitor(monitorRectAsID, verticalMiddleSplitKey);
+			int horizontalMiddleSplit = getKeyValForMonitor(monitorRectAsID, horizontalMiddleSplitKey);
 
 			int width = rightMargin - verticalMiddleSplit;
 			int height = bottomMargin - horizontalMiddleSplit;
@@ -786,10 +794,10 @@
 		public static void LeftmostTop(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
-			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
-			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
+			int leftMargin = getKeyValForMonitor(monitorRectAsID, leftMarginKey);
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int verticalLeftSplit = getKeyValForMonitor(monitorRectAsID, verticalLeftSplitKey);
+			int horizontalMiddleSplit = getKeyValForMonitor(monitorRectAsID, horizontalMiddleSplitKey);
 
 			int width = verticalLeftSplit - leftMargin;
 			int height = horizontalMiddleSplit - topMargin;
@@ -800,10 +808,10 @@
 		public static void LeftmostBottom(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
-			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
-			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
+			int leftMargin = getKeyValForMonitor(monitorRectAsID, leftMarginKey);
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
+			int verticalLeftSplit = getKeyValForMonitor(monitorRectAsID, verticalLeftSplitKey);
+			int horizontalMiddleSplit = getKeyValForMonitor(monitorRectAsID, horizontalMiddleSplitKey);
 			
 			int width = verticalLeftSplit - leftMargin;
 			int height = bottomMargin - horizontalMiddleSplit;
@@ -814,11 +822,11 @@
 		public static void LeftmostCenter(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
-			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
-			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
-			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
+			int leftMargin = getKeyValForMonitor(monitorRectAsID, leftMarginKey);
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
+			int verticalLeftSplit = getKeyValForMonitor(monitorRectAsID, verticalLeftSplitKey);
+			int horizontalMiddleSplit = getKeyValForMonitor(monitorRectAsID, horizontalMiddleSplitKey);
 
 			int width = verticalLeftSplit - leftMargin;
 			int height = (bottomMargin - topMargin) / 2;
@@ -829,10 +837,10 @@
 		public static void LeftmostFullHeight(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
-			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
-			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
-			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
+			int leftMargin = getKeyValForMonitor(monitorRectAsID, leftMarginKey);
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int verticalLeftSplit = getKeyValForMonitor(monitorRectAsID, verticalLeftSplitKey);
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
 
 			int width = verticalLeftSplit - leftMargin;
 			int height = bottomMargin - topMargin;
@@ -843,10 +851,10 @@
 		public static void MiddleTop(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
-			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
-			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int verticalLeftSplit = getKeyValForMonitor(monitorRectAsID, verticalLeftSplitKey);
+			int verticalRightSplit = getKeyValForMonitor(monitorRectAsID, verticalRightSplitKey);
+			int horizontalMiddleSplit = getKeyValForMonitor(monitorRectAsID, horizontalMiddleSplitKey);
 
 			int width = verticalRightSplit - verticalLeftSplit;
 			int height = horizontalMiddleSplit - topMargin;
@@ -857,10 +865,10 @@
 		public static void MiddleBottom(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
-			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
-			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
+			int verticalLeftSplit = getKeyValForMonitor(monitorRectAsID, verticalLeftSplitKey);
+			int verticalRightSplit = getKeyValForMonitor(monitorRectAsID, verticalRightSplitKey);
+			int horizontalMiddleSplit = getKeyValForMonitor(monitorRectAsID, horizontalMiddleSplitKey);
 
 			int width = verticalRightSplit - verticalLeftSplit;
 			int height = bottomMargin - horizontalMiddleSplit;
@@ -871,11 +879,11 @@
 		public static void MiddleCenter(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
-			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
-			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
-			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
+			int verticalRightSplit = getKeyValForMonitor(monitorRectAsID, verticalRightSplitKey);
+			int verticalLeftSplit = getKeyValForMonitor(monitorRectAsID, verticalLeftSplitKey);
+			int horizontalMiddleSplit = getKeyValForMonitor(monitorRectAsID, horizontalMiddleSplitKey);
 
 			int width = verticalRightSplit - verticalLeftSplit;
 			int height = (bottomMargin - topMargin) / 2;
@@ -887,10 +895,10 @@
 		public static void MiddleFullHeight(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
-			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
-			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
-			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int verticalLeftSplit = getKeyValForMonitor(monitorRectAsID, verticalLeftSplitKey);
+			int verticalRightSplit = getKeyValForMonitor(monitorRectAsID, verticalRightSplitKey);
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
 
 			int width = verticalRightSplit - verticalLeftSplit;
 			int height = bottomMargin - topMargin;
@@ -901,10 +909,10 @@
 		public static void RightmostTop(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
-			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
-			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
+			int rightMargin = getKeyValForMonitor(monitorRectAsID, rightMarginKey);
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int verticalRightSplit = getKeyValForMonitor(monitorRectAsID, verticalRightSplitKey);
+			int horizontalMiddleSplit = getKeyValForMonitor(monitorRectAsID, horizontalMiddleSplitKey);
 
 			int width = rightMargin - verticalRightSplit;
 			int height = horizontalMiddleSplit - topMargin;
@@ -915,10 +923,10 @@
 		public static void RightmostBottom(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
-			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
-			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
+			int rightMargin = getKeyValForMonitor(monitorRectAsID, rightMarginKey);
+			int verticalRightSplit = getKeyValForMonitor(monitorRectAsID, verticalRightSplitKey);
+			int horizontalMiddleSplit = getKeyValForMonitor(monitorRectAsID, horizontalMiddleSplitKey);
 			
 			int width = rightMargin - verticalRightSplit;
 			int height = bottomMargin - horizontalMiddleSplit;
@@ -929,11 +937,11 @@
 		public static void RightmostCenter(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
-			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
-			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
-			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
-			int horizontalMiddleSplit = bordersDict[monitorRectAsID][horizontalMiddleSplitKey];
+			int rightMargin = getKeyValForMonitor(monitorRectAsID, rightMarginKey);
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
+			int verticalRightSplit = getKeyValForMonitor(monitorRectAsID, verticalRightSplitKey);
+			int horizontalMiddleSplit = getKeyValForMonitor(monitorRectAsID, horizontalMiddleSplitKey);
 
 			int width = rightMargin - verticalRightSplit;
 			int height = (bottomMargin - topMargin) / 2;
@@ -945,10 +953,10 @@
 		public static void RightmostFullHeight(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
-			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
-			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
-			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
+			int rightMargin = getKeyValForMonitor(monitorRectAsID, rightMarginKey);
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int verticalRightSplit = getKeyValForMonitor(monitorRectAsID, verticalRightSplitKey);
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
 
 			int width = rightMargin - verticalRightSplit;
 			int height = bottomMargin - topMargin;
@@ -1035,15 +1043,15 @@
 		public static void NineSplit(IntPtr windowHandle, WindowHorizontalPosition position)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
-			int topMargin = bordersDict[monitorRectAsID][topMarginKey];
-			int bottomMargin = bordersDict[monitorRectAsID][bottomMarginKey];
-			int leftMargin = bordersDict[monitorRectAsID][leftMarginKey];
-			int rightMargin = bordersDict[monitorRectAsID][rightMarginKey];
-			int verticalLeftSplit = bordersDict[monitorRectAsID][verticalLeftSplitKey];
-			int verticalMiddleSplit = bordersDict[monitorRectAsID][verticalMiddleSplitKey];
-			int verticalRightSplit = bordersDict[monitorRectAsID][verticalRightSplitKey];
-			int horizontalTopSplit = bordersDict[monitorRectAsID][horizontalTopSplitKey];
-			int horizontalBottomSplit = bordersDict[monitorRectAsID][horizontalBottomSplitKey];
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
+			int leftMargin = getKeyValForMonitor(monitorRectAsID, leftMarginKey);
+			int rightMargin = getKeyValForMonitor(monitorRectAsID, rightMarginKey);
+			int verticalLeftSplit = getKeyValForMonitor(monitorRectAsID, verticalLeftSplitKey);
+			int verticalMiddleSplit = getKeyValForMonitor(monitorRectAsID, verticalMiddleSplitKey);
+			int verticalRightSplit = getKeyValForMonitor(monitorRectAsID, verticalRightSplitKey);
+			int horizontalTopSplit = getKeyValForMonitor(monitorRectAsID, horizontalTopSplitKey);
+			int horizontalBottomSplit = getKeyValForMonitor(monitorRectAsID, horizontalBottomSplitKey);
 
 			int height = 0, width = 0;
 			int x = 0, y = 0;
@@ -1109,15 +1117,6 @@
 			return result;
 		}
 
-		public static bool timerBorderRecalculateExpired()
-		{
-			DateTime currentTime = DateTime.Now; // Pobranie aktualnego czasu
-			TimeSpan elapsedTime = currentTime - lastBordersRecalc; // Obliczenie czasu, który minął
-
-			// return (elapsedTime.TotalSeconds >= 15);
-			return false;
-		}
-		
 		public static Rectangle getMouseMonitorBounds()
 		{
 			return BFS.Monitor.GetMonitorBoundsByMouseCursor();
@@ -1214,10 +1213,17 @@
 			int horShift = horShiftDistance * horDirection;
 			int verShift = verShiftDistance * verDirection;
 
-			// MessageBox.Show(" before set location");
+			string verLastShiftForWindowKey = windowHandle.ToString() + lastVerShiftKey;
+			string horLastShiftForWindowKey = windowHandle.ToString() + lastHorShiftKey;
+
+			BFS.ScriptSettings.WriteValue(verLastShiftForWindowKey, verShift.ToString());
+			BFS.ScriptSettings.WriteValue(horLastShiftForWindowKey, horShift.ToString());
+
 			BFS.Window.SetLocation(windowHandle, windowRect.X + horShift, windowRect.Y + verShift); 
 			// MessageBox.Show("Moved window " + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
 		}
+
+
 
 		public static string MergeKeyCodes(params string[] keyCodes)
 		{
@@ -1234,5 +1240,10 @@
 			}
 
 			return sb.ToString();
+		}
+
+		public static string RectAsKey(Rectangle rec)
+		{
+			return $"RectangleX{rec.X}Y{rec.Y}Width{rec.Width}Height{rec.Height}";
 		}
 	}
