@@ -430,12 +430,13 @@
 				setKeyValForMonitor(monitorRect, bottomMarginKey, bottomMargin + verShift);
 				setKeyValForMonitor(monitorRect, leftMarginKey, leftMargin + horShift);
 				setKeyValForMonitor(monitorRect, rightMarginKey, rightMargin + horShift);
-				setKeyValForMonitor(monitorRect, horizontalTopSplitKey, getKeyValForMonitor(monitorRect, horizontalTopSplitKey) + horShift);
-				setKeyValForMonitor(monitorRect, horizontalMiddleSplitKey, getKeyValForMonitor(monitorRect, horizontalMiddleSplitKey) + horShift);
-				setKeyValForMonitor(monitorRect, horizontalBottomSplitKey, getKeyValForMonitor(monitorRect, horizontalBottomSplitKey) + horShift);
-				setKeyValForMonitor(monitorRect, verticalMiddleSplitKey, getKeyValForMonitor(monitorRect, verticalMiddleSplitKey) + verShift);
-				setKeyValForMonitor(monitorRect, verticalLeftSplitKey, getKeyValForMonitor(monitorRect, verticalLeftSplitKey) + verShift);
-				setKeyValForMonitor(monitorRect, verticalRightSplitKey, getKeyValForMonitor(monitorRect, verticalRightSplitKey) + verShift);
+				setKeyValForMonitor(monitorRect, horizontalTopSplitKey, getKeyValForMonitor(monitorRect, horizontalTopSplitKey) + verShift);
+				setKeyValForMonitor(monitorRect, horizontalMiddleSplitKey, getKeyValForMonitor(monitorRect, horizontalMiddleSplitKey) + verShift);
+				setKeyValForMonitor(monitorRect, horizontalBottomSplitKey, getKeyValForMonitor(monitorRect, horizontalBottomSplitKey) + verShift);
+				// MessageBox.Show($"Saving middle split key: {getKeyValForMonitor(monitorRect, verticalMiddleSplitKey)}->{getKeyValForMonitor(monitorRect, verticalMiddleSplitKey)+verShift}");
+				setKeyValForMonitor(monitorRect, verticalMiddleSplitKey, getKeyValForMonitor(monitorRect, verticalMiddleSplitKey) + horShift);
+				setKeyValForMonitor(monitorRect, verticalLeftSplitKey, getKeyValForMonitor(monitorRect, verticalLeftSplitKey) + horShift);
+				setKeyValForMonitor(monitorRect, verticalRightSplitKey, getKeyValForMonitor(monitorRect, verticalRightSplitKey) + horShift);
 
 				setKeyValForMonitor(monitorRect, lastVerShiftKey, verShift);
 				setKeyValForMonitor(monitorRect, lastHorShiftKey, horShift);
@@ -703,6 +704,7 @@
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
 			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
 			int verticalMiddleSplit = getKeyValForMonitor(monitorRectAsID, verticalMiddleSplitKey);
+			// MessageBox.Show($"Got middle split: {verticalMiddleSplit}");
 			int leftMargin = getKeyValForMonitor(monitorRectAsID, leftMarginKey);
 			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
 
@@ -731,6 +733,7 @@
 			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
 			int rightMargin = getKeyValForMonitor(monitorRectAsID, rightMarginKey);
 			int verticalMiddleSplit = getKeyValForMonitor(monitorRectAsID, verticalMiddleSplitKey);
+			// MessageBox.Show($"Got middle split: {verticalMiddleSplit}");
 			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
 
 			uint monitorID = BFS.Monitor.GetMonitorIDByRect(monitorRectAsID);
