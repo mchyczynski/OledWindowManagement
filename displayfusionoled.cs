@@ -1,6 +1,7 @@
 	using System;
 	using System.Text;
 	using System.Reflection;
+	using System.Linq;
 	using System.Drawing;
 	using System.Windows.Forms;
 	using System.Collections.Generic;
@@ -53,6 +54,9 @@
 		public static string KEY_A = "65";
 		public static string KEY_Q = "81";
 
+		public static int FILTER_MONITOR_WIDTH = 1920;
+		public static int FILTER_MONITOR_HEIGHT = 1200;
+
 		public static Dictionary<string, int> windowDirectionsDict = new Dictionary<string, int>();
 		public enum WindowHorizontalPosition
 		{
@@ -96,7 +100,7 @@
 					
 					// {{ "PaleGreen", "Black", "TopLeft" }},
 					
-					// {{ "DodgerBlue", "Black", "LeftmostTop" }},
+					{{ "DodgerBlue", "Black", "TmpMargins" }},
 					
 					{{ "DodgerBlue", "Black", "SixSplitLeft" }},
 					{{ "DodgerBlue", "Black", "SixSplitMiddle" }},
@@ -201,18 +205,8 @@
 
 				shiftMargins();
 
-				foreach(IntPtr windowHandle in BFS.Window.GetVisibleAndMinimizedWindowHandles())
+				foreach(IntPtr windowHandle in GetFilteredWindowHandles())
 				{
-					string name = BFS.Window.GetText(windowHandle);
-
-					if (BFS.Window.IsMinimized(windowHandle) || // dont move minimized windows because it wil un-minimize them // todo save when it would be moved and use when unminimized
-						BFS.Window.IsMaximized(windowHandle) ||  // ignore maximized windows
-						(String.IsNullOrEmpty(name) || name == "Program Manager") ) // ignore fake windows
-					{
-						continue;
-					}
-					// todo add ignore windows with size = monitor size because fullscreen are not considered maximized?
-
 					// MessageBox.Show("Processing window" + BFS.Application.GetAppIDByWindow(windowHandle).ToString() + " " + BFS.Window.GetText(windowHandle));
 
 					if (wasWindowInsideMargins(windowHandle))
@@ -256,7 +250,7 @@
 
 			if(marginStatus.tooHigh)
 			{
-				MessageBox.Show($"Window >>{name}<< [.L{newLeft} .R{newRight} .T{newTop} .B{newBottom}] too high in monitor [.L{leftMargin} .R{rightMargin} .T{topMargin} .B{bottomMargin}]");
+				// MessageBox.Show($"Window >>{name}<< [.L{newLeft} .R{newRight} .T{newTop} .B{newBottom}] too high in monitor [.L{leftMargin} .R{rightMargin} .T{topMargin} .B{bottomMargin}]");
 			}
 			bool inside = !marginStatus.tooHigh && !marginStatus.tooLow && !marginStatus.tooLeft & !marginStatus.tooRight;
 
@@ -304,11 +298,11 @@
 			
 			if(windowIsInsideMargins) // INSIDE margins
 			{
-				MessageBox.Show($"Window [.L{currLeft} .R{currRight} .T{currTop} .B{currBottom}] was INSIDE margins[.L{leftMarginOld}->{leftMarginCurr} .R{rightMarginOld}->{rightMarginCurrd} .T{topMarginOld}->{topMarginCurr} .B{bottomMarginOld}->{bottomMarginCurr}]");
+				// MessageBox.Show($"Window [.L{currLeft} .R{currRight} .T{currTop} .B{currBottom}] was INSIDE margins[.L{leftMarginOld}->{leftMarginCurr} .R{rightMarginOld}->{rightMarginCurrd} .T{topMarginOld}->{topMarginCurr} .B{bottomMarginOld}->{bottomMarginCurr}]");
 			}
 			else // OUTSIDE margins
 			{
-				MessageBox.Show($"Window [.L{currLeft} .R{currRight} .T{currTop} .B{currBottom}] was outside margins[.L{leftMarginOld}->{leftMarginCurr} .R{rightMarginOld}->{rightMarginCurrd} .T{topMarginOld}->{topMarginCurr} .B{bottomMarginOld}->{bottomMarginCurr}]");
+				// MessageBox.Show($"Window [.L{currLeft} .R{currRight} .T{currTop} .B{currBottom}] was outside margins[.L{leftMarginOld}->{leftMarginCurr} .R{rightMarginOld}->{rightMarginCurrd} .T{topMarginOld}->{topMarginCurr} .B{bottomMarginOld}->{bottomMarginCurr}]");
 			}
 
 			return windowIsInsideMargins;
@@ -398,7 +392,7 @@
 
 		public static void shiftMargins()
 		{
-			Rectangle[] allMonitors = BFS.Monitor.GetMonitorBoundsNoSplits();
+			Rectangle[] allMonitors = GetFilteredMonitorRectList();
 			foreach (Rectangle monitorRect in allMonitors)
 			{
 				int topMargin = getKeyValForMonitor(monitorRect, topMarginKey);
@@ -413,10 +407,10 @@
 					bottomMargin - topMargin // height
 				);
 
-				MessageBox.Show($"shifting margins [.L{leftMargin} .R{rightMargin} .T{topMargin} .B{bottomMargin}] for monitor  [.L{monitorRect.X} .R{monitorRect.X+monitorRect.Width} .T{monitorRect.Y} .B{monitorRect.Y+monitorRect.Height}]");
+				// MessageBox.Show($"shifting margins [.L{leftMargin} .R{rightMargin} .T{topMargin} .B{bottomMargin}] for monitor  [.L{monitorRect.X} .R{monitorRect.X+monitorRect.Width} .T{monitorRect.Y} .B{monitorRect.Y+monitorRect.Height}]");
 
-				string  verMarginsDirectionForMonitorKey = RectAsKey(monitorRect) + verMarginsDirectionKey;
-				string  horMarginsDirectionForMonitorKey = RectAsKey(monitorRect) + horMarginsDirectionKey;
+				string  verMarginsDirectionForMonitorKey = GetKeyNameForMonitor(monitorRect, verMarginsDirectionKey);
+				string  horMarginsDirectionForMonitorKey = GetKeyNameForMonitor(monitorRect, horMarginsDirectionKey);
 
 				int verDirection = decideVerDirection(marginsRect, monitorRect, verMarginsDirectionForMonitorKey, "margin ver");
 				int horDirection = decideHorDirection(marginsRect, monitorRect, horMarginsDirectionForMonitorKey, "margin hor");
@@ -429,6 +423,9 @@
 				int verShift = verShiftDistance * verDirection;
 				int horShift = horShiftDistance * horDirection;
 
+
+				// MessageBox.Show($"shift for margins: x->{horShift} y->{verShift}");
+				
 				setKeyValForMonitor(monitorRect, topMarginKey, topMargin + verShift);
 				setKeyValForMonitor(monitorRect, bottomMarginKey, bottomMargin + verShift);
 				setKeyValForMonitor(monitorRect, leftMarginKey, leftMargin + horShift);
@@ -447,8 +444,17 @@
 
 		public static void HandleWindowInsideMargins(IntPtr windowHandle)
 		{
-			int verDirection = readIntKey(verMarginsDirectionKey);
-			int horDirection = readIntKey(horMarginsDirectionKey);
+			Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
+
+			// string  verMarginsDirectionForMonitorKey = GetKeyNameForMonitor(monitorRect,  );
+			// string  horMarginsDirectionForMonitorKey = GetKeyNameForMonitor(monitorRect, );
+
+			int verDirection = getKeyValForMonitor(monitorRect, verMarginsDirectionKey);
+			int horDirection = getKeyValForMonitor(monitorRect, horMarginsDirectionKey);
+
+
+			//  = readIntKey(verMarginsDirectionKey);
+			//  = readIntKey(horMarginsDirectionKey);
 
 			if(horDirection == 0 && verDirection == 0)
 			{
@@ -614,7 +620,7 @@
 		// verticalRightSplitKey - right border when doing 1-1-1 and 2-1 splits
 		public static void generateSplitBordersAllMonitors()
 		{
-			Rectangle[] allMonitors = BFS.Monitor.GetMonitorBoundsNoSplits();
+			Rectangle[] allMonitors = GetAllMonitorRectList();
 			foreach (Rectangle monitorRect in allMonitors)
 			{
 				setKeyValForMonitorWhenEmpty(monitorRect, topMarginKey,  monitorRect.Y + GetRandomShift(0, shiftRange));
@@ -637,7 +643,7 @@
 
 		public static void setKeyValForMonitorWhenEmpty(Rectangle monitorRectAsID, string key, int newValue)
 		{
-			string fullMonitorKey = key + "_" + RectAsKey(monitorRectAsID);
+			string fullMonitorKey = GetKeyNameForMonitor(monitorRectAsID, key);
 
 			if (keyAlreadyGenerated(fullMonitorKey))
 			{
@@ -652,7 +658,7 @@
 		}
 		public static void setKeyValForMonitor(Rectangle monitorRectAsID, string key, int newValue)
 		{
-			string fullMonitorKey = key + "_" + RectAsKey(monitorRectAsID);
+			string fullMonitorKey = GetKeyNameForMonitor(monitorRectAsID, key);
 
 			// save in settings
 			BFS.ScriptSettings.WriteValue(fullMonitorKey, newValue.ToString());
@@ -660,7 +666,7 @@
 
 		public static int getKeyValForMonitor(Rectangle monitorRectAsID, string key)
 		{
-			string fullMonitorKey = key + "_" + RectAsKey(monitorRectAsID);
+			string fullMonitorKey = GetKeyNameForMonitor(monitorRectAsID, key);
 			
 			int result;
 			if (keyAlreadyGenerated(fullMonitorKey))
@@ -674,7 +680,24 @@
 			}
 			return result;
 		}
-		
+
+		public static void TmpMargins(IntPtr windowHandle)
+		{
+			Rectangle monitorRectAsID = getMouseMonitorBounds();
+			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
+			int rightMargin = getKeyValForMonitor(monitorRectAsID, rightMarginKey);
+			int leftMargin = getKeyValForMonitor(monitorRectAsID, leftMarginKey);
+			int bottomMargin = getKeyValForMonitor(monitorRectAsID, bottomMarginKey);
+
+			int width = rightMargin - leftMargin;
+			int height = bottomMargin - topMargin;
+
+			// MessageBox.Show($"Moving windows to X.{leftMargin} Y.{topMargin} [{width}/{height}]");
+			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+
+			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
+		}
+
 		public static void Left(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
@@ -1128,7 +1151,7 @@
 			Point mousePosition = new Point(BFS.Input.GetMousePositionX(), BFS.Input.GetMousePositionY());
 			
 			// Get an array of the bounds for all monitors ignoring splits
-			Rectangle[] monitorBoundsAll = BFS.Monitor.GetMonitorBoundsNoSplits();
+			Rectangle[] monitorBoundsAll = GetAllMonitorRectList();
 			
 			// Loop through the array of bounds and find monitor in which mouse in located
 			foreach (Rectangle monitorBounds in monitorBoundsAll)
@@ -1163,7 +1186,7 @@
 			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
 
 			// Get an array of the bounds for all monitors ignoring splits
-			Rectangle[] monitorBoundsAll = BFS.Monitor.GetMonitorBoundsNoSplits();
+			Rectangle[] monitorBoundsAll = GetAllMonitorRectList();
 			
 			// find monitor for CENTER point of window
 			Point windowPosition = new Point(windowRect.X + windowRect.Width / 2, windowRect.Y + windowRect.Height / 2);
@@ -1219,6 +1242,7 @@
 			BFS.ScriptSettings.WriteValue(verLastShiftForWindowKey, verShift.ToString());
 			BFS.ScriptSettings.WriteValue(horLastShiftForWindowKey, horShift.ToString());
 
+			// MessageBox.Show($"Moving windos X->{horShift} Y->{verShift}");
 			BFS.Window.SetLocation(windowHandle, windowRect.X + horShift, windowRect.Y + verShift); 
 			// MessageBox.Show("Moved window " + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
 		}
@@ -1245,5 +1269,60 @@
 		public static string RectAsKey(Rectangle rec)
 		{
 			return $"RectangleX{rec.X}Y{rec.Y}Width{rec.Width}Height{rec.Height}";
+		}
+		public static Rectangle[] GetAllMonitorRectList()
+		{
+			return BFS.Monitor.GetMonitorBoundsNoSplits();
+		}
+
+		public static Rectangle[] GetFilteredMonitorRectList()
+		{
+			Rectangle[] allMonitors = BFS.Monitor.GetMonitorBoundsNoSplits();
+
+			Rectangle[] filteredMonitors = allMonitors.Where(rectangle => rectangle.Width == FILTER_MONITOR_WIDTH && 
+			                                                             rectangle.Height == FILTER_MONITOR_HEIGHT).ToArray();
+
+			return filteredMonitors;
+		}
+
+		public static IntPtr[] GetAllWindowHandles()
+		{
+			return BFS.Window.GetVisibleAndMinimizedWindowHandles();
+		}
+
+		public static IntPtr[] GetFilteredWindowHandles()
+		{
+			IntPtr[] allWindows = BFS.Window.GetVisibleAndMinimizedWindowHandles();
+
+
+			// todo add ignore windows with size = monitor size because fullscreen are not considered maximized?
+
+			IntPtr[] filteredWindows = allWindows.Where(windowHandle => {
+
+
+				if (BFS.Window.IsMinimized(windowHandle) || // dont move minimized windows because it wil un-minimize them // todo save when it would be moved and use when unminimized
+					BFS.Window.IsMaximized(windowHandle))  // ignore maximized windows
+				{
+					return false;
+				}
+
+				string name = BFS.Window.GetText(windowHandle);
+				if (string.IsNullOrEmpty(name) || name == "Program Manager") // ignore fake windows
+				{
+					return false;
+				}
+
+				Rectangle currentWindowMonitorBounds = getCurrentWindowMonitorBounds(windowHandle);
+
+				return currentWindowMonitorBounds.Width == FILTER_MONITOR_WIDTH && 
+				       currentWindowMonitorBounds.Height == FILTER_MONITOR_HEIGHT;
+			}).ToArray();
+
+			return filteredWindows;
+		}
+
+		public static string GetKeyNameForMonitor(Rectangle monitorRect, string key)
+		{
+			return key + "_" + RectAsKey(monitorRect);
 		}
 	}
