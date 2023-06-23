@@ -54,8 +54,8 @@
 		public static string KEY_A = "65";
 		public static string KEY_Q = "81";
 
-		public static int FILTER_MONITOR_WIDTH = 1920;
-		public static int FILTER_MONITOR_HEIGHT = 1200;
+		public static int FILTER_MONITOR_WIDTH = 3840; //1920;
+		public static int FILTER_MONITOR_HEIGHT = 2160; //1200;
 
 		public static Dictionary<string, int> windowDirectionsDict = new Dictionary<string, int>();
 		public enum WindowHorizontalPosition
@@ -331,7 +331,7 @@
 					}
 					else 
 					{
-						resultDirection = 1; // todo what dir when outside margins ver but in both monitor borders? random?
+						resultDirection = GetRandomDirection();
 					}
 				}
 				else // outside monitor up and down, move window down to show top
@@ -372,7 +372,7 @@
 					}
 					else
 					{
-						resultDirection = 1; // todo what dir when outside margins hor but in both monitor borders? random?
+						resultDirection = GetRandomDirection();
 					}
 				}
 				else // outside monitor left and right, move window to the right to show left side
@@ -423,7 +423,9 @@
 				int verShift = verShiftDistance * verDirection;
 				int horShift = horShiftDistance * horDirection;
 
-
+				decide how far go until hit border exactly then move all margins and splits respectively
+				refactor out shiftMarginForMonitor
+				decideVerShiftDistance?
 				// MessageBox.Show($"shift for margins: x->{horShift} y->{verShift}");
 				
 				setKeyValForMonitor(monitorRect, topMarginKey, topMargin + verShift);
