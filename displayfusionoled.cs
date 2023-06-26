@@ -1338,8 +1338,8 @@
 
 			while(!locationXSetOk)
 			{
-				// MessageBox.Show($"Moving window failed for X. requested.{newX} actual{windowRect.X} increasing move to {newX + Math.Sign(newX)}");
-				newX = newX + Math.Sign(newX);
+				// MessageBox.Show($"Moving window failed for X. requested.{newX} actual{windowRect.X} increasing move to {newX + Math.Sign(horShift)}");
+				newX = newX + Math.Sign(horShift);
 				BFS.Window.SetLocation(windowHandle, newX, newY); 
 				windowRect = BFS.Window.GetBounds(windowHandle);
 				locationXSetOk = windowRect.X == newX;
@@ -1351,8 +1351,8 @@
 
 			while(!locationYSetOk)
 			{
-				// MessageBox.Show($"Moving window failed for Y. requested.{newY} actual{windowRect.Y} increasing move to {newY + Math.Sign(newY)}");
-				newY = newY + Math.Sign(newY);
+				// MessageBox.Show($"Moving window failed for Y. requested.{newY} actual{windowRect.Y} increasing move to {newY + Math.Sign(verShift)}");
+				newY = newY + Math.Sign(verShift);
 				BFS.Window.SetLocation(windowHandle, newX, newY); 
 				windowRect = BFS.Window.GetBounds(windowHandle);
 				locationYSetOk = windowRect.Y == newY;
