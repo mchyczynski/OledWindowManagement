@@ -17,7 +17,7 @@
 	public static class DisplayFusionFunction
 	{
 		public static int shiftRange = 100;
-		public const int horShiftDefaultDistance = 30, verShiftDefaultDistance = 30;
+		public const int horShiftDefaultDistance = 1, verShiftDefaultDistance = 1;
 		public static bool enableSizeVariance = false;
 		public static bool enablePositionVariance = true;
 		public static bool enableWholeSpaceShift = true;
@@ -54,8 +54,10 @@
 		public static string KEY_A = "65";
 		public static string KEY_Q = "81";
 
-		public static int FILTER_MONITOR_WIDTH = 3840; //1920;
-		public static int FILTER_MONITOR_HEIGHT = 2160; //1200;
+		public static int FILTER_MONITOR_WIDTH = 3840;
+		// public static int FILTER_MONITOR_WIDTH = 1920;
+		public static int FILTER_MONITOR_HEIGHT = 2160;
+		// public static int FILTER_MONITOR_HEIGHT = 1200;
 
 		public static Dictionary<string, int> windowDirectionsDict = new Dictionary<string, int>();
 		public enum WindowHorizontalPosition
@@ -559,6 +561,8 @@
 			{
 				MessageBox.Show($"Error OUTSIDE MARGINS no movement horShift {horShift} verShift {verShift} "); // todo remove?
 			}
+
+			// MessageBox.Show($"HandleWindowOutsideMargins [{name}]\n {monitorRect} // {windowRect}\n verdir.{verDirection} hordir{horDirection}\nvershift.{verShift} horshift.{horShift} ");
 
 			SetNewLocation(windowHandle, horShift, verShift); 
 
@@ -1317,11 +1321,37 @@
 			BFS.ScriptSettings.WriteValue(verLastShiftForWindowKey, verShift.ToString()); // todo is it used anywhere?
 			BFS.ScriptSettings.WriteValue(horLastShiftForWindowKey, horShift.ToString());
 
-			// MessageBox.Show($"Moving windos X->{horShift} Y->{verShift}");
-			BFS.Window.SetLocation(windowHandle, windowRect.X + horShift, windowRect.Y + verShift); 
-			// MessageBox.Show("Moved window " + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
-		}
+			int newX = windowRect.X + horShift;
+			int newY = windowRect.Y + verShift;
+			BFS.Window.SetLocation(windowHandle, newX, newY); 
+			windowRect = BFS.Window.GetBounds(windowHandle);
+			bool locationXSetOk = windowRect.X == newX;
 
+			while(!locationXSetOk)
+			{
+				int sign = horShift >= 0 ? 1 : -1;
+				// MessageBox.Show($"Moving window failed for X. requested.{newX} actual{windowRect.X} increasing move to {newX + sign} [{sign}]");
+				newX = newX + sign;
+				BFS.Window.SetLocation(windowHandle, newX, newY); 
+				windowRect = BFS.Window.GetBounds(windowHandle);
+				locationXSetOk = windowRect.X == newX;
+				// MessageBox.Show("Moved window to pos " + BFS.Window.GetBounds(windowHandle).ToString() + " ok? " + locationXSetOk);
+			}
+
+			windowRect = BFS.Window.GetBounds(windowHandle);
+			bool locationYSetOk = windowRect.Y == newY;
+
+			while(!locationYSetOk)
+			{
+				int sign = verShift >= 0 ? 1 : -1;
+				// MessageBox.Show($"Moving window failed for Y. requested.{newY} actual{windowRect.Y} increasing move to {newY + sign} [{sign}]");
+				newY = newY + sign;
+				BFS.Window.SetLocation(windowHandle, newX, newY); 
+				windowRect = BFS.Window.GetBounds(windowHandle);
+				locationYSetOk = windowRect.Y == newY;
+				// MessageBox.Show("Moved window to pos " + BFS.Window.GetBounds(windowHandle).ToString() + " ok? " + locationYSetOk);
+			}
+		}
 
 
 		public static string MergeKeyCodes(params string[] keyCodes)
