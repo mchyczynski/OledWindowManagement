@@ -539,6 +539,15 @@
 			}
 
 			SetNewLocation(windowHandle, horMarginsLastShift, verMarginsLastShift); 
+
+			// store information about direction when window was in margin in order to use them (and match direction) when window moved out of margins
+			string windowOutsideMarginsVerDirKey = windowHandle.ToString() + verDirPrefixForWindowOutsideMarginsKeyPostfix;
+			string windowOutsideMarginsHorDirKey = windowHandle.ToString() + horDirPrefixForWindowOutsideMarginsKeyPostfix;
+
+			// MessageBox.Show($"Saving direction for key [{windowOutsideMarginsVerDirKey}]: {Math.Sign(verMarginsLastShift).ToString()} \nand\nfor key [{windowOutsideMarginsHorDirKey}]: {Math.Sign(horMarginsLastShift).ToString()} ");
+			BFS.ScriptSettings.WriteValue(windowOutsideMarginsVerDirKey, Math.Sign(verMarginsLastShift).ToString());
+			BFS.ScriptSettings.WriteValue(windowOutsideMarginsHorDirKey, Math.Sign(horMarginsLastShift).ToString());
+
 		}
 
 		public static void HandleWindowOutsideMargins(IntPtr windowHandle)
@@ -1329,9 +1338,8 @@
 
 			while(!locationXSetOk)
 			{
-				int sign = horShift >= 0 ? 1 : -1;
-				// MessageBox.Show($"Moving window failed for X. requested.{newX} actual{windowRect.X} increasing move to {newX + sign} [{sign}]");
-				newX = newX + sign;
+				// MessageBox.Show($"Moving window failed for X. requested.{newX} actual{windowRect.X} increasing move to {newX + Math.Sign(newX)}");
+				newX = newX + Math.Sign(newX);
 				BFS.Window.SetLocation(windowHandle, newX, newY); 
 				windowRect = BFS.Window.GetBounds(windowHandle);
 				locationXSetOk = windowRect.X == newX;
@@ -1343,9 +1351,8 @@
 
 			while(!locationYSetOk)
 			{
-				int sign = verShift >= 0 ? 1 : -1;
-				// MessageBox.Show($"Moving window failed for Y. requested.{newY} actual{windowRect.Y} increasing move to {newY + sign} [{sign}]");
-				newY = newY + sign;
+				// MessageBox.Show($"Moving window failed for Y. requested.{newY} actual{windowRect.Y} increasing move to {newY + Math.Sign(newY)}");
+				newY = newY + Math.Sign(newY);
 				BFS.Window.SetLocation(windowHandle, newX, newY); 
 				windowRect = BFS.Window.GetBounds(windowHandle);
 				locationYSetOk = windowRect.Y == newY;
