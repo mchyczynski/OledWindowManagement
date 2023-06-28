@@ -100,7 +100,7 @@
 		public static string lastVerShiftKey = "lastVerShiftKey";
 
 		public static uint moveWindowTimerDelay = 1000; 
-		public static int MAX_MOVE_STUBBORN_RETRIES = 3;
+		public static int MAX_MOVE_STUBBORN_RETRIES = 10;
 
 		public static string KEY_SHIFT = "16";
 		public static string KEY_CTRL = "17";
@@ -1401,6 +1401,13 @@
 			BFS.General.ThreadWait(10);
 			windowRect = WindowUtils.GetBounds(windowHandle);
 			bool locationXSetOk = windowRect.X == newX;
+			
+			if (!locationXSetOk)
+			{
+				BFS.General.ThreadWait(100);
+				windowRect = WindowUtils.GetBounds(windowHandle);
+				locationXSetOk = windowRect.X == newX;
+			}
 
 			int counterX = 0;
 			while(!locationXSetOk && counterX <= MAX_MOVE_STUBBORN_RETRIES)
@@ -1417,6 +1424,13 @@
 
 			windowRect = WindowUtils.GetBounds(windowHandle);
 			bool locationYSetOk = windowRect.Y == newY;
+
+			if (!locationYSetOk)
+			{
+				BFS.General.ThreadWait(100);
+				windowRect = WindowUtils.GetBounds(windowHandle);
+				locationYSetOk = windowRect.Y == newY;
+			}
 
 			int counterY = 0;
 			while(!locationYSetOk && counterY <= MAX_MOVE_STUBBORN_RETRIES)
@@ -1513,6 +1527,7 @@
 
 				if (string.IsNullOrEmpty(text) 
 				    || text == "Program Manager"
+				    || text == "Snap Assist"
 				    || text == "Start"
 				    || text == "Search")
 				{
@@ -1533,6 +1548,12 @@
 					currentWindowMonitorBounds.Height == windowRect.Height)
 				{
 					if (debugWindowFiltering) MessageBox.Show($"Filtering max size out\n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
+					return false;
+				}
+
+				if (windowRect.Width == 0 || windowRect.Height == 0)
+				{
+					if (debugWindowFiltering) MessageBox.Show($"Filtering zero size out\n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
 					return false;
 				}
 
