@@ -7,15 +7,65 @@
 	using System.Collections.Generic;
 	using System.Runtime.InteropServices;
 
-	// The 'windowHandle' parameter will contain the window handle for the:
-	// - Active window when run by hotkey
-	// - Window Location target when run by a Window Location rule
-	// - TitleBar Button owner when run by a TitleBar Button
-	// - Jump List owner when run from a Taskbar Jump List
-	// - Currently focused window if none of these match
-
 	public static class DisplayFusionFunction
 	{
+		public static class WindowUtils
+		{
+			[DllImport("user32.dll", SetLastError = true)]
+			static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+			[DllImport("user32.dll", SetLastError = true)]
+			static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+			[StructLayout(LayoutKind.Sequential)]
+			public struct RECT
+			{
+				public int Left;
+				public int Top;
+				public int Right;
+				public int Bottom;
+			}
+
+			static readonly IntPtr HWND_TOP = new IntPtr(0);
+			static readonly uint SWP_NOSIZE = 0x0001;
+			static readonly uint SWP_NOMOVE = 0x0002;
+			static readonly uint SWP_NOACTIVATE = 0x0010;
+			static readonly uint SWP_NOOWNERZORDER = 0x0200;
+			static readonly uint SWP_NOZORDER = 0x0004;
+
+			public static void SetLocation(IntPtr windowHandle, int x, int y)
+			{
+				uint flags = SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER;
+				SetWindowPos(windowHandle, windowHandle, x, y, 0, 0, flags);
+			}
+
+			public static void SetSizeAndLocation(IntPtr windowHandle, int x, int y, int w, int h)
+			{
+				uint flags = SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER;
+				SetWindowPos(windowHandle, windowHandle, x, y, w, h, flags);
+			}
+			public static Rectangle GetBounds(IntPtr windowHandle)
+			{
+				int windowX = 0, windowY = 0, windowWidth = 0, windowHeight = 0;
+				RECT windowRect;
+
+				if (GetWindowRect(windowHandle, out windowRect))
+				{
+					windowX = windowRect.Left;
+					windowY = windowRect.Top;
+					windowWidth = windowRect.Right - windowRect.Left;
+					windowHeight = windowRect.Bottom - windowRect.Top;
+				}
+
+				Rectangle rect = new Rectangle(
+					windowX,
+					windowY,
+					windowWidth,
+					windowHeight
+				);
+				return rect;
+			}
+		}
+
 		public static int shiftRange = 100;
 		public const int horShiftDefaultDistance = 1, verShiftDefaultDistance = 1;
 		public static bool enableSizeVariance = false;
@@ -49,7 +99,7 @@
 		public static string lastHorShiftKey = "lastHorShiftKey";
 		public static string lastVerShiftKey = "lastVerShiftKey";
 
-		public static uint moveWindowTimerDelay = 30000; 
+		public static uint moveWindowTimerDelay = 1000; 
 		public static int MAX_MOVE_STUBBORN_RETRIES = 3;
 
 		public static string KEY_SHIFT = "16";
@@ -272,7 +322,7 @@
 		public static bool wasWindowInsideMargins(IntPtr windowHandle)
 		{
 			Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
-			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+			Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
 
 			int verLastMarginShift = getKeyValForMonitor(monitorRect, lastVerShiftKey);
 			int horLastMarginShift = getKeyValForMonitor(monitorRect, lastHorShiftKey);
@@ -559,7 +609,7 @@
 			string windowOutsideMarginsHorDirKey = windowHandle.ToString() + horDirPrefixForWindowOutsideMarginsKeyPostfix;
 			
 			Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
-			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+			Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
 
 			string name = BFS.Window.GetText(windowHandle);
 			int verDirection = decideVerDirection(windowRect, monitorRect, windowOutsideMarginsVerDirKey, name);
@@ -613,7 +663,7 @@
 				return;
 
 			// get the position of the window in the monitor, and the current monitor
-			// Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+			// Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
 			Rectangle monitorRect = getMouseMonitorBounds();
 			
 			// calculate windows size variance
@@ -682,7 +732,7 @@
 			}
 			
 			// move and resize window
-			BFS.Window.SetSizeAndLocation(windowHandle, iFinalWinX, iFinalWinY, iFinalWinW, iFinalWinH );
+			WindowUtils.SetSizeAndLocation(windowHandle, iFinalWinX, iFinalWinY, iFinalWinW, iFinalWinH );
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 			
 			// display values for debug
@@ -796,7 +846,7 @@
 			int height = bottomMargin - topMargin;
 
 			// MessageBox.Show($"Moving windows to X.{leftMargin} Y.{topMargin} [{width}/{height}]");
-			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
 
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
@@ -824,7 +874,7 @@
 				int height = bottomMargin - topMargin;
 
 				// MessageBox.Show($"Moving windows to X.{leftMargin} Y.{topMargin} [{width}/{height}]");
-				BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+				WindowUtils.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
 			}
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
@@ -854,7 +904,7 @@
 				int width = rightMargin - verticalMiddleSplit;
 				int height = bottomMargin - topMargin;
 				// MessageBox.Show($"Moving windows to X.{verticalMiddleSplit} Y.{topMargin} [{width}/{height}]");
-				BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
+				WindowUtils.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
 			}
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
@@ -871,7 +921,7 @@
 
 			int width = verticalMiddleSplit - leftMargin;
 			int height = horizontalMiddleSplit - topMargin;
-			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
 						
@@ -885,7 +935,7 @@
 
 			int width = rightMargin - verticalMiddleSplit;
 			int height = horizontalMiddleSplit - topMargin;
-			BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, verticalMiddleSplit, topMargin, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
 					
@@ -899,7 +949,7 @@
 
 			int width = verticalMiddleSplit - leftMargin;
 			int height = bottomMargin - horizontalMiddleSplit;
-			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
 						
@@ -913,7 +963,7 @@
 
 			int width = rightMargin - verticalMiddleSplit;
 			int height = bottomMargin - horizontalMiddleSplit;
-			BFS.Window.SetSizeAndLocation(windowHandle, verticalMiddleSplit, horizontalMiddleSplit, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, verticalMiddleSplit, horizontalMiddleSplit, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
 		
@@ -929,7 +979,7 @@
 
 			int width = verticalLeftSplit - leftMargin;
 			int height = horizontalMiddleSplit - topMargin;
-			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
 		
@@ -943,7 +993,7 @@
 			
 			int width = verticalLeftSplit - leftMargin;
 			int height = bottomMargin - horizontalMiddleSplit;
-			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, leftMargin, horizontalMiddleSplit, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
 					
@@ -959,7 +1009,7 @@
 			int width = verticalLeftSplit - leftMargin;
 			int height = (bottomMargin - topMargin) / 2;
 			int y = horizontalMiddleSplit - height / 2;
-			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, y, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, leftMargin, y, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
 		public static void LeftmostFullHeight(IntPtr windowHandle)
@@ -972,7 +1022,7 @@
 
 			int width = verticalLeftSplit - leftMargin;
 			int height = bottomMargin - topMargin;
-			BFS.Window.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, leftMargin, topMargin, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
 		
@@ -986,7 +1036,7 @@
 
 			int width = verticalRightSplit - verticalLeftSplit;
 			int height = horizontalMiddleSplit - topMargin;
-			BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, topMargin, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, verticalLeftSplit, topMargin, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}	
 			
@@ -1000,7 +1050,7 @@
 
 			int width = verticalRightSplit - verticalLeftSplit;
 			int height = bottomMargin - horizontalMiddleSplit;
-			BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, horizontalMiddleSplit, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, verticalLeftSplit, horizontalMiddleSplit, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}	
 			
@@ -1016,7 +1066,7 @@
 			int width = verticalRightSplit - verticalLeftSplit;
 			int height = (bottomMargin - topMargin) / 2;
 			int y = horizontalMiddleSplit - height / 2;
-			BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, y, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, verticalLeftSplit, y, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}	
 
@@ -1030,7 +1080,7 @@
 
 			int width = verticalRightSplit - verticalLeftSplit;
 			int height = bottomMargin - topMargin;
-			BFS.Window.SetSizeAndLocation(windowHandle, verticalLeftSplit, topMargin, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, verticalLeftSplit, topMargin, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}	
 			
@@ -1044,7 +1094,7 @@
 
 			int width = rightMargin - verticalRightSplit;
 			int height = horizontalMiddleSplit - topMargin;
-			BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, topMargin, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, verticalRightSplit, topMargin, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}	
 						
@@ -1058,7 +1108,7 @@
 			
 			int width = rightMargin - verticalRightSplit;
 			int height = bottomMargin - horizontalMiddleSplit;
-			BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, horizontalMiddleSplit, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, verticalRightSplit, horizontalMiddleSplit, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
 
@@ -1074,7 +1124,7 @@
 			int width = rightMargin - verticalRightSplit;
 			int height = (bottomMargin - topMargin) / 2;
 			int y = horizontalMiddleSplit - height / 2;
-			BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, y, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, verticalRightSplit, y, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}	
 			
@@ -1088,7 +1138,7 @@
 
 			int width = rightMargin - verticalRightSplit;
 			int height = bottomMargin - topMargin;
-			BFS.Window.SetSizeAndLocation(windowHandle, verticalRightSplit, topMargin, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, verticalRightSplit, topMargin, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}	
 
@@ -1224,7 +1274,7 @@
 				y = topMargin;
 			}
 
-			BFS.Window.SetSizeAndLocation(windowHandle, x, y, width, height);
+			WindowUtils.SetSizeAndLocation(windowHandle, x, y, width, height);
 			if (enableWindowsAutoShift) StartMovingWindows(windowHandle);
 		}
 		
@@ -1288,7 +1338,7 @@
 
 		public static Rectangle getCurrentWindowMonitorBounds(IntPtr windowHandle)
 		{
-			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+			Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
 
 			// Get an array of the bounds for all monitors ignoring splits
 			Rectangle[] monitorBoundsAll = GetAllMonitorRectList();
@@ -1334,7 +1384,10 @@
 		}
 		public static void SetNewLocation(IntPtr windowHandle, int horShift, int verShift)
 		{
-			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+			string namess = BFS.Window.GetText(windowHandle);
+			// MessageBox.Show($"moving {namess}");
+			
+			Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
 
 			string verLastShiftForWindowKey = windowHandle.ToString() + lastVerShiftKey;
 			string horLastShiftForWindowKey = windowHandle.ToString() + lastHorShiftKey;
@@ -1344,8 +1397,9 @@
 
 			int newX = windowRect.X + horShift;
 			int newY = windowRect.Y + verShift;
-			BFS.Window.SetLocation(windowHandle, newX, newY); 
-			windowRect = BFS.Window.GetBounds(windowHandle);
+			WindowUtils.SetLocation(windowHandle, newX, newY); 
+			BFS.General.ThreadWait(10);
+			windowRect = WindowUtils.GetBounds(windowHandle);
 			bool locationXSetOk = windowRect.X == newX;
 
 			int counterX = 0;
@@ -1353,14 +1407,15 @@
 			{
 				// MessageBox.Show($"[{counterX}] Moving window {BFS.Window.GetText(windowHandle)} [{windowRect.ToString()}] failed for X. requested.{newX} actual{windowRect.X} increasing move to {newX + Math.Sign(horShift)}");
 				newX = newX + Math.Sign(horShift);
-				BFS.Window.SetLocation(windowHandle, newX, newY); 
-				windowRect = BFS.Window.GetBounds(windowHandle);
+				WindowUtils.SetLocation(windowHandle, newX, newY); 
+				BFS.General.ThreadWait(10);
+				windowRect = WindowUtils.GetBounds(windowHandle);
 				locationXSetOk = windowRect.X == newX;
-				// MessageBox.Show("[Moved window to pos " + BFS.Window.GetBounds(windowHandle).ToString() + " ok? " + locationXSetOk);
+				// MessageBox.Show("[Moved window to pos " + WindowUtils.GetBounds(windowHandle).ToString() + " ok? " + locationXSetOk);
 				counterX++;
 			}
 
-			windowRect = BFS.Window.GetBounds(windowHandle);
+			windowRect = WindowUtils.GetBounds(windowHandle);
 			bool locationYSetOk = windowRect.Y == newY;
 
 			int counterY = 0;
@@ -1368,10 +1423,11 @@
 			{
 				// MessageBox.Show($"[{counterY}] Moving window {BFS.Window.GetText(windowHandle)} [{windowRect.ToString()}] failed for Y. requested.{newY} actual{windowRect.Y} increasing move to {newY + Math.Sign(verShift)}");
 				newY = newY + Math.Sign(verShift);
-				BFS.Window.SetLocation(windowHandle, newX, newY); 
-				windowRect = BFS.Window.GetBounds(windowHandle);
+				WindowUtils.SetLocation(windowHandle, newX, newY); 
+				BFS.General.ThreadWait(10);
+				windowRect = WindowUtils.GetBounds(windowHandle);
 				locationYSetOk = windowRect.Y == newY;
-				// MessageBox.Show("Moved window to pos " + BFS.Window.GetBounds(windowHandle).ToString() + " ok? " + locationYSetOk);
+				// MessageBox.Show("Moved window to pos " + WindowUtils.GetBounds(windowHandle).ToString() + " ok? " + locationYSetOk);
 				counterY++;
 			}
 
@@ -1431,7 +1487,7 @@
 			IntPtr[] filteredWindows = allWindows.Where(windowHandle => {
 
 				string text = BFS.Window.GetText(windowHandle);
-				Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+				Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
 				string classname = BFS.Window.GetClass(windowHandle);
 
 				if(classname.StartsWith("DFTaskbar") || 
