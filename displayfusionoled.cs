@@ -25,6 +25,8 @@
 		public static bool enableWindowsAutoShift = false;
 		public static bool enableWindowsPositionTimedShift = false;
 
+		public static bool debugWindowFiltering = false;
+
 		public static string topMarginKey = "topMarginKey";
 		public static string bottomMarginKey = "bottomMarginKey";
 		public static string leftMarginKey = "leftMarginKey";
@@ -48,6 +50,7 @@
 		public static string lastVerShiftKey = "lastVerShiftKey";
 
 		public static uint moveWindowTimerDelay = 30000; 
+		public static int MAX_MOVE_STUBBORN_RETRIES = 3;
 
 		public static string KEY_SHIFT = "16";
 		public static string KEY_CTRL = "17";
@@ -91,7 +94,9 @@
 				{
 					//	{{ "Background-Color", "Foreground-Color", "Function-Name" }}
 					
-					{{ "Aquamarine", "Black", "SingleWindow100" }},
+					{{ "SlateGray", "Black", "FullMargins" }},
+
+					{{ "Aquamarine", "Black", "SingleWindow99" }},
 					{{ "Aquamarine", "Black", "SingleWindow95" }},
 					{{ "Aquamarine", "Black", "SingleWindow90" }},
 					{{ "Aquamarine", "Black", "SingleWindow80" }},
@@ -99,10 +104,6 @@
 					
 					{{ "Khaki", "Black", "Left" }},
 					{{ "Khaki", "Black", "Right" }},
-					
-					// {{ "PaleGreen", "Black", "TopLeft" }},
-					
-					{{ "DodgerBlue", "Black", "TmpMargins" }},
 					
 					{{ "DodgerBlue", "Black", "SixSplitLeft" }},
 					{{ "DodgerBlue", "Black", "SixSplitMiddle" }},
@@ -220,9 +221,9 @@
 						// determine direction and  move each window independently of movement of windows inside margins
 						HandleWindowOutsideMargins(windowHandle);
 					}
-
-
 				} // foreach window
+
+				enableWindowsPositionTimedShift = readBoolKey(moveFlagKey);
 			} // while true
 
 			BFS.ScriptSettings.WriteValue(moveFlagKey, false.ToString());
@@ -339,13 +340,13 @@
 				else // outside monitor up and down, move window down to show top
 				{
 					resultDirection = 1;
-					MessageBox.Show("warning window both to high and too low"); // todo remove?
+					MessageBox.Show($"warning window {name} [{movingRect.ToString()}] both to high and too low"); // todo remove?
 				}
 			} 
 			else // window will never fit inside monitor borders because too high
 			{
 				resultDirection = 0;
-				MessageBox.Show("window will never fit inside monitor borders because too high"); // todo remove?
+				MessageBox.Show($"window {name} [{movingRect.ToString()}] will never fit inside monitor borders because too high"); // todo remove?
 			}
 			BFS.ScriptSettings.WriteValue(directionKey, resultDirection.ToString());
 			// MessageBox.Show($"decideVerDirection movingRect[{movingRect.ToString()} directionKey {directionKey} [{name}]] >>>>>>>>{resultDirection}");
@@ -381,13 +382,14 @@
 				else // outside monitor left and right, move window to the right to show left side
 				{
 					resultDirection = 1;
-					MessageBox.Show("warning window both too right and too left"); // todo remove?
+					MessageBox.Show($"warning window {name} [{movingRect.ToString()}] both too right and too left"); // todo remove?
 				}
 			}
 			else // window will never fit inside monitor borders bevause too wide
 			{
+
 				resultDirection = 0;
-				MessageBox.Show("window will never fit inside monitor borders because too wide"); // todo remove?
+				MessageBox.Show($"window {name} [{movingRect.ToString()}] will never fit inside monitor borders because too wide"); // todo remove?
 			}
 			BFS.ScriptSettings.WriteValue(directionKey, resultDirection.ToString());
 			// MessageBox.Show($"decideHorDirection movingRect[{movingRect.ToString()} directionKey {directionKey} [{name}]] >>>>>> {resultDirection}");
@@ -578,9 +580,9 @@
 			// MessageBox.Show("HandleWindowOutsideMargins end");
 		}
 
-		public static void SingleWindow100(IntPtr windowHandle)
+		public static void SingleWindow99(IntPtr windowHandle)
 		{
-			SingleWindowX(windowHandle, 1);
+			SingleWindowX(windowHandle, 0.99);
 		}
 		
 		public static void SingleWindow95(IntPtr windowHandle)
@@ -771,7 +773,7 @@
 			return result;
 		}
 
-		public static void TmpMargins(IntPtr windowHandle)
+		public static void FullMargins(IntPtr windowHandle)
 		{
 			Rectangle monitorRectAsID = getMouseMonitorBounds();
 			int topMargin = getKeyValForMonitor(monitorRectAsID, topMarginKey);
@@ -1319,7 +1321,6 @@
 			MessageBox.Show($"Did not find ANY monitor for window {windowID} [X {windowRect.X}, Y {windowRect.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
 			return default; 
 		}
-
 		public static void SetNewLocation(IntPtr windowHandle, int horShift, int verShift)
 		{
 			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
@@ -1336,27 +1337,37 @@
 			windowRect = BFS.Window.GetBounds(windowHandle);
 			bool locationXSetOk = windowRect.X == newX;
 
-			while(!locationXSetOk)
+			int counterX = 0;
+			while(!locationXSetOk && counterX <= MAX_MOVE_STUBBORN_RETRIES)
 			{
-				// MessageBox.Show($"Moving window failed for X. requested.{newX} actual{windowRect.X} increasing move to {newX + Math.Sign(horShift)}");
+				// MessageBox.Show($"[{counterX}] Moving window {BFS.Window.GetText(windowHandle)} [{windowRect.ToString()}] failed for X. requested.{newX} actual{windowRect.X} increasing move to {newX + Math.Sign(horShift)}");
 				newX = newX + Math.Sign(horShift);
 				BFS.Window.SetLocation(windowHandle, newX, newY); 
 				windowRect = BFS.Window.GetBounds(windowHandle);
 				locationXSetOk = windowRect.X == newX;
-				// MessageBox.Show("Moved window to pos " + BFS.Window.GetBounds(windowHandle).ToString() + " ok? " + locationXSetOk);
+				// MessageBox.Show("[Moved window to pos " + BFS.Window.GetBounds(windowHandle).ToString() + " ok? " + locationXSetOk);
+				counterX++;
 			}
 
 			windowRect = BFS.Window.GetBounds(windowHandle);
 			bool locationYSetOk = windowRect.Y == newY;
 
-			while(!locationYSetOk)
+			int counterY = 0;
+			while(!locationYSetOk && counterY <= MAX_MOVE_STUBBORN_RETRIES)
 			{
-				// MessageBox.Show($"Moving window failed for Y. requested.{newY} actual{windowRect.Y} increasing move to {newY + Math.Sign(verShift)}");
+				// MessageBox.Show($"[{counterY}] Moving window {BFS.Window.GetText(windowHandle)} [{windowRect.ToString()}] failed for Y. requested.{newY} actual{windowRect.Y} increasing move to {newY + Math.Sign(verShift)}");
 				newY = newY + Math.Sign(verShift);
 				BFS.Window.SetLocation(windowHandle, newX, newY); 
 				windowRect = BFS.Window.GetBounds(windowHandle);
 				locationYSetOk = windowRect.Y == newY;
 				// MessageBox.Show("Moved window to pos " + BFS.Window.GetBounds(windowHandle).ToString() + " ok? " + locationYSetOk);
+				counterY++;
+			}
+
+			if(MAX_MOVE_STUBBORN_RETRIES != 0 && (counterX > MAX_MOVE_STUBBORN_RETRIES || counterY > MAX_MOVE_STUBBORN_RETRIES) )
+			{
+				string name = BFS.Window.GetText(windowHandle);
+				MessageBox.Show($"Reached limit of moving stubborn windows retries: X.{counterX} Y.{counterY} / {MAX_MOVE_STUBBORN_RETRIES} for window {name} [{windowRect}]\n\nClass:\n{BFS.Window.GetClass(windowHandle)}");
 			}
 		}
 
@@ -1406,28 +1417,60 @@
 		{
 			IntPtr[] allWindows = BFS.Window.GetVisibleAndMinimizedWindowHandles();
 
-
-			// todo add ignore windows with size = monitor size because fullscreen are not considered maximized?
-
 			IntPtr[] filteredWindows = allWindows.Where(windowHandle => {
 
+				string text = BFS.Window.GetText(windowHandle);
+				Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+				string classname = BFS.Window.GetClass(windowHandle);
+
+				if(classname.StartsWith("DFTaskbar") || 
+				   classname.StartsWith("DFTitleBarWindow") ||
+				   classname.StartsWith("Shell_TrayWnd") || 
+				   classname.StartsWith("Windows.UI.Core.CoreWindow") ||  // Start and Search windows
+				   classname.StartsWith("Progman") ) // Program Manager
+				{
+					if (debugWindowFiltering) MessageBox.Show($"Filtering class out\n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
+					if(!string.IsNullOrEmpty(text) && text != "Search" && text != "Start" && text != "Program Manager")
+					{
+						MessageBox.Show($"WARNING filtering out by class but text is not empty nor blacklisted \n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
+					}
+					return false;
+				}
 
 				if (BFS.Window.IsMinimized(windowHandle) || // dont move minimized windows because it wil un-minimize them // todo save when it would be moved and use when unminimized
 					BFS.Window.IsMaximized(windowHandle))  // ignore maximized windows
 				{
+					if (debugWindowFiltering) MessageBox.Show($"Filtering min max out\n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
 					return false;
 				}
 
-				string name = BFS.Window.GetText(windowHandle);
-				if (string.IsNullOrEmpty(name) || name == "Program Manager") // ignore fake windows
+				if (string.IsNullOrEmpty(text) 
+				    || text == "Program Manager"
+				    || text == "Start"
+				    || text == "Search")
 				{
+					if (debugWindowFiltering) MessageBox.Show($"Filtering text out\n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
 					return false;
 				}
 
 				Rectangle currentWindowMonitorBounds = getCurrentWindowMonitorBounds(windowHandle);
 
-				return currentWindowMonitorBounds.Width == FILTER_MONITOR_WIDTH && 
-				       currentWindowMonitorBounds.Height == FILTER_MONITOR_HEIGHT;
+				if (currentWindowMonitorBounds.Width != FILTER_MONITOR_WIDTH || 
+					currentWindowMonitorBounds.Height != FILTER_MONITOR_HEIGHT)
+				{
+					if (debugWindowFiltering) MessageBox.Show($"Filtering wrong monitor\n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
+					return false;
+				}
+
+				if (currentWindowMonitorBounds.Width == windowRect.Width && 
+					currentWindowMonitorBounds.Height == windowRect.Height)
+				{
+					if (debugWindowFiltering) MessageBox.Show($"Filtering max size out\n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
+					return false;
+				}
+
+				if (debugWindowFiltering) MessageBox.Show($"Filtering OK\n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
+				return true;
 			}).ToArray();
 
 			return filteredWindows;
