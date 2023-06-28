@@ -582,50 +582,61 @@
 
 		public static void SingleWindow99(IntPtr windowHandle)
 		{
-			SingleWindowX(windowHandle, 0.99);
+			SingleWindowX(windowHandle, 0.99, true);
 		}
 		
 		public static void SingleWindow95(IntPtr windowHandle)
 		{
-			SingleWindowX(windowHandle, 0.95);
+			SingleWindowX(windowHandle, 0.95, true);
 		}
 		
 		public static void SingleWindow90(IntPtr windowHandle)
 		{
-			SingleWindowX(windowHandle, 0.90);
+			SingleWindowX(windowHandle, 0.90, false);
 		}
 			
 		public static void SingleWindow80(IntPtr windowHandle)
 		{
-			SingleWindowX(windowHandle, 0.80);
+			SingleWindowX(windowHandle, 0.80, false);
 		}
 		
 		public static void SingleWindow60(IntPtr windowHandle)
 		{
-			SingleWindowX(windowHandle, 0.60);
+			SingleWindowX(windowHandle, 0.60, false);
 		}
 
 		
-		public static void SingleWindowX(IntPtr windowHandle, double factor)
+		public static void SingleWindowX(IntPtr windowHandle, double factor, bool symmetric)
 		{
-			// MessageBox.Show("To jest powiadomienie SingleWindow90.", "Tytuł powiadomienia", MessageBoxButtons.OK);
-
 			// check to see if there was an error, if there was, exit function
 			if (windowHandle == IntPtr.Zero)
 				return;
 
 			// get the position of the window in the monitor, and the current monitor
-			Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
+			// Rectangle windowRect = BFS.Window.GetBounds(windowHandle);
 			Rectangle monitorRect = getMouseMonitorBounds();
 			
 			// calculate windows size variance
 			int randomShiftW = enableSizeVariance ? GetRandomShift(shiftRange) : 0;
 			int randomShiftH = enableSizeVariance ? GetRandomShift(shiftRange) : 0;
-			
+
+
 			// calculate final window size
-			int iFinalWinW = Convert.ToInt32(monitorRect.Width * factor) + randomShiftW;
-			int iFinalWinH = Convert.ToInt32(monitorRect.Height * factor) + randomShiftH;
-			
+			int iFinalWinW, iFinalWinH;
+			if(symmetric) // reduce same number of pixels horizonatlly and vertically
+			{
+				// calculate how much window will be smaller than monitor
+				int reduction = Convert.ToInt32(monitorRect.Height * (1 - factor)) + randomShiftW;
+
+				iFinalWinW = monitorRect.Width  - reduction;
+				iFinalWinH = monitorRect.Height - reduction;
+			}
+			else
+			{
+				iFinalWinW = Convert.ToInt32(monitorRect.Width * factor) + randomShiftW;
+				iFinalWinH = Convert.ToInt32(monitorRect.Height * factor) + randomShiftH;
+			}
+
 			// calculate window position variance
 			int randomShiftX = 0, randomShiftY = 0;
 			int iFinalWinX = monitorRect.X + (monitorRect.Width - iFinalWinW) / 2;
@@ -676,10 +687,10 @@
 			
 			// display values for debug
 			// MessageBox.Show("iFinalWinX " +iFinalWinX+ "\tiFinalWinY " + iFinalWinY+
-							// "\niFinalWinW " +iFinalWinW+ "\tiFinalWinH " +iFinalWinH+ 
-							// "\nrandomShiftW " +randomShiftW+ "\trandomShiftH " + randomShiftH+
-							// "\nrandomShiftX " +randomShiftX+ "\trandomShiftY " +randomShiftY +
-							// "\nmonitorRect.X " + monitorRect.X + "\tmonitorRect.Y " + monitorRect.Y);
+			// 				"\niFinalWinW " +iFinalWinW+ "\tiFinalWinH " +iFinalWinH+ 
+			// 				"\nrandomShiftW " +randomShiftW+ "\trandomShiftH " + randomShiftH+
+			// 				"\nrandomShiftX " +randomShiftX+ "\trandomShiftY " +randomShiftY +
+			// 				"\nmonitorRect.X " + monitorRect.X + "\tmonitorRect.Y " + monitorRect.Y);
 		}
 
 		public static int GetRandomShift(int range)
