@@ -12,9 +12,15 @@
 		public static class WindowUtils
 		{
 			[DllImport("user32.dll", SetLastError = true)]
-			static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+			private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 			[DllImport("user32.dll", SetLastError = true)]
-			static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+			private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+			[DllImport("user32.dll", SetLastError = true)]
+			private static extern bool RedrawWindow(IntPtr hWnd, IntPtr lprcUpdate, IntPtr hrgnUpdate, uint flags);
+			[DllImport("user32.dll", SetLastError = true)]
+			private static extern bool InvalidateRect(IntPtr hWnd, IntPtr lpRect, bool bErase);
+			[DllImport("user32.dll", SetLastError = true)]
+			private static extern bool UpdateWindow(IntPtr hWnd);
 
 			[StructLayout(LayoutKind.Sequential)]
 			public struct RECT
@@ -25,23 +31,44 @@
 				public int Bottom;
 			}
 
-			static readonly IntPtr HWND_TOP = new IntPtr(0);
-			static readonly uint SWP_NOSIZE = 0x0001;
-			static readonly uint SWP_NOMOVE = 0x0002;
-			static readonly uint SWP_NOACTIVATE = 0x0010;
-			static readonly uint SWP_NOOWNERZORDER = 0x0200;
-			static readonly uint SWP_NOZORDER = 0x0004;
+			private static readonly IntPtr HWND_TOP = new IntPtr(0);
+			private static readonly uint SWP_NOSIZE = 0x0001;
+			private static readonly uint SWP_NOMOVE = 0x0002;
+			private static readonly uint SWP_NOACTIVATE = 0x0010;
+			private static readonly uint SWP_NOOWNERZORDER = 0x0200;
+			private static readonly uint SWP_NOZORDER = 0x0004;
+			private static readonly uint SWP_FRAMECHANGED = 0x0020;
+			private static readonly uint RDW_INVALIDATE = 0x0001;
+			private static readonly  uint RDW_ALLCHILDREN = 0x0080;
+			private static readonly uint RDW_UPDATENOW = 0x0100;
 
 			public static void SetLocation(IntPtr windowHandle, int x, int y)
 			{
-				uint flags = SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER;
-				SetWindowPos(windowHandle, windowHandle, x, y, 0, 0, flags);
+				uint flags = SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_FRAMECHANGED;
+				bool result = SetWindowPos(windowHandle, windowHandle, x, y, 0, 0, flags);
+				if (!result)
+				{
+					int errorCode = Marshal.GetLastWin32Error();
+					string text = BFS.Window.GetText(windowHandle);
+					Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
+
+					MessageBox.Show($"ERROR SetWindowPos windows API: {errorCode}\n\ntext: |{text}|\n\nrect: {windowRect.ToString()}\n\nrequested pos: x.{x} y.{y}");
+				}
 			}
 
 			public static void SetSizeAndLocation(IntPtr windowHandle, int x, int y, int w, int h)
 			{
-				uint flags = SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER;
-				SetWindowPos(windowHandle, windowHandle, x, y, w, h, flags);
+				uint flags = SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_FRAMECHANGED;
+				bool result = SetWindowPos(windowHandle, windowHandle, x, y, w, h, flags);
+
+				if (!result)
+				{
+					int errorCode = Marshal.GetLastWin32Error();
+					string text = BFS.Window.GetText(windowHandle);
+					Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
+
+					MessageBox.Show($"ERROR SetSizeAndLocation windows API: {errorCode}\n\ntext: |{text}|\n\nrect: {windowRect.ToString()}\n\nrequested pos: x.{x} y.{y} w.{w} h.{h}");
+				}
 			}
 			public static Rectangle GetBounds(IntPtr windowHandle)
 			{
@@ -55,6 +82,14 @@
 					windowWidth = windowRect.Right - windowRect.Left;
 					windowHeight = windowRect.Bottom - windowRect.Top;
 				}
+				else
+				{
+					int errorCode = Marshal.GetLastWin32Error();
+					string text = BFS.Window.GetText(windowHandle);
+					Rectangle windowRectangle = WindowUtils.GetBounds(windowHandle);
+
+					MessageBox.Show($"ERROR SetSizeAndLocation windows API: {errorCode}\n\ntext: |{text}|\n\nrect: {windowRectangle.ToString()}");
+				}
 
 				Rectangle rect = new Rectangle(
 					windowX,
@@ -64,7 +99,49 @@
 				);
 				return rect;
 			}
-		}
+
+			public static void RedrawWindow(IntPtr windowHandle)
+			{
+				bool result = RedrawWindow(windowHandle, IntPtr.Zero, IntPtr.Zero, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+
+				if(!result)
+				{
+					int errorCode = Marshal.GetLastWin32Error();
+					string text = BFS.Window.GetText(windowHandle);
+					Rectangle windowRectangle = WindowUtils.GetBounds(windowHandle);
+
+					MessageBox.Show($"ERROR RedrawWindow windows API: {errorCode}\n\ntext: |{text}|\n\nrect: {windowRectangle.ToString()}");
+				}
+			}
+
+			public static void ForceUpdateWindow(IntPtr windowHandle)
+			{
+				bool result = UpdateWindow(windowHandle);
+
+				if(!result)
+				{
+					int errorCode = Marshal.GetLastWin32Error();
+					string text = BFS.Window.GetText(windowHandle);
+					Rectangle windowRectangle = WindowUtils.GetBounds(windowHandle);
+
+					MessageBox.Show($"ERROR UpdateWindow windows API: {errorCode}\n\ntext: |{text}|\n\nrect: {windowRectangle.ToString()}");
+				}
+			}
+
+			public static void InvalidateRectangle(IntPtr windowHandle)
+			{
+				bool result = InvalidateRect(windowHandle, IntPtr.Zero, true);
+
+				if(!result)
+				{
+					int errorCode = Marshal.GetLastWin32Error();
+					string text = BFS.Window.GetText(windowHandle);
+					Rectangle windowRectangle = WindowUtils.GetBounds(windowHandle);
+
+					MessageBox.Show($"ERROR InvalidateRectangle windows API: {errorCode}\n\ntext: |{text}|\n\nrect: {windowRectangle.ToString()}");
+				}
+			}
+		} // WindowUtils
 
 		public static int shiftRange = 100;
 		public const int horShiftDefaultDistance = 1, verShiftDefaultDistance = 1;
@@ -111,8 +188,13 @@
 		// public static int FILTER_MONITOR_WIDTH = 1920;
 		public static int FILTER_MONITOR_HEIGHT = 2160;
 		// public static int FILTER_MONITOR_HEIGHT = 1200;
-
-		public static Dictionary<string, int> windowDirectionsDict = new Dictionary<string, int>();
+			
+		public class WindowLazyShift
+		{
+			public int XShift { get; set; }
+			public int YShift { get; set; }
+		}
+		public static Dictionary<IntPtr, WindowLazyShift> windowLazyShift = new Dictionary<IntPtr, WindowLazyShift>();
 		public enum WindowHorizontalPosition
 		{
 			Left,
@@ -131,12 +213,6 @@
 
 		public static void Run(IntPtr windowHandle)
 		{
-			//these are all of the functions from the "Window Management" functions list
-			//the function are just called by their names. to find their names, you can copy them
-			//from the context menus, or type "BFS.DisplayFusion.RunFunction(" and a window will come up
-			//with all of the available functions
-			//Regarding the "--- Cancel ---" entries, these are used to cancel the action, see below "MenuItem_Click"
-
 			// BFS.ScriptSettings.WriteValue(moveFlagKey, false.ToString());
 			// MessageBox.Show("Stopping move" + BFS.Application.GetAppIDByWindow(windowHandle).ToString());
 
@@ -224,6 +300,15 @@
 			
 			if (method != null)
 			{
+				if(functionName != "StartMovingWindows")
+				{
+					if (windowLazyShift.ContainsKey(windowHandle))
+					{
+						// string text = BFS.Window.GetText(windowHandle);
+						// MessageBox.Show($"Removing lazy shift data for |{text}| because new location from func {functionName}");
+						windowLazyShift.Remove(windowHandle);
+					}
+				}
 				method.Invoke(null, new object[] { windowHandle });
 			}
 			else
@@ -1359,21 +1444,21 @@
 				return monitor;
 			MessageBox.Show($"Did not find monitor for window TOP LEFT {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
 
-			// find monitor for TOP RIGHT window conrner
+			// find monitor for TOP RIGHT window corner
 			windowPosition= new Point(windowRect.X + windowRect.Width, windowRect.Y);
 			monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
 			if (monitor != Rectangle.Empty) 
 				return monitor;
 			MessageBox.Show($"Did not find monitor for window TOP RIGHT {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
 
-			// find monitor for BOTTOM LEFT window conrner
+			// find monitor for BOTTOM LEFT window corner
 			windowPosition= new Point(windowRect.X, windowRect.Y + windowRect.Height);
 			monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
 			if (monitor != Rectangle.Empty) 
 				return monitor;
 			MessageBox.Show($"Did not find monitor for window BOTTOM LEFT {windowID} [X {windowPosition.X}, Y {windowPosition.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
 
-			// find monitor for BOTTOM RIGHT window conrner
+			// find monitor for BOTTOM RIGHT window corner
 			windowPosition= new Point(windowRect.X + windowRect.Width, windowRect.Y + windowRect.Height);
 			monitor = getMonitorByPoint(windowPosition, monitorBoundsAll);
 			if (monitor != Rectangle.Empty) 
@@ -1385,78 +1470,141 @@
 		}
 		public static void SetNewLocation(IntPtr windowHandle, int horShift, int verShift)
 		{
-			string namess = BFS.Window.GetText(windowHandle);
-			// MessageBox.Show($"moving {namess}");
+			string text = BFS.Window.GetText(windowHandle);
+			// MessageBox.Show($"moving {text}");
 			
 			Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
 			if(windowRect.Width == 0 || windowRect.Height == 0)
 			{
-				string name = BFS.Window.GetText(windowHandle); // todo remove message
-				MessageBox.Show($"Skipping move for disappeared window |{name}| [{windowRect}]\n\nClass:\n{BFS.Window.GetClass(windowHandle)}\n\nhorshift {horShift} vershift{verShift}");
+				MessageBox.Show($"Skipping move for disappeared window |{text}| [{windowRect}]\n\nClass:\n{BFS.Window.GetClass(windowHandle)}\n\nhorshift {horShift} vershift{verShift}"); // todo remove
 				return;
 			}
 
-			string verLastShiftForWindowKey = windowHandle.ToString() + lastVerShiftKey;
-			string horLastShiftForWindowKey = windowHandle.ToString() + lastHorShiftKey;
-
-			BFS.ScriptSettings.WriteValue(verLastShiftForWindowKey, verShift.ToString()); // todo is it used anywhere?
-			BFS.ScriptSettings.WriteValue(horLastShiftForWindowKey, horShift.ToString());
-
 			int newX = windowRect.X + horShift;
 			int newY = windowRect.Y + verShift;
+
+			if (windowLazyShift.ContainsKey(windowHandle))
+			{
+				int newXwithLazy = newX + windowLazyShift[windowHandle].XShift;
+				int newYwithLazy = newY + windowLazyShift[windowHandle].YShift;
+
+				// MessageBox.Show($"Increasing position because found lazy |{text}|\nX: {newX}->{newXwithLazy}\nY{newY}->{newYwithLazy}");
+				newX = newXwithLazy;
+				newY = newYwithLazy;
+			}
+
+			// MessageBox.Show($"moving newX {newX} newT {newY}");
+			BFS.General.ThreadWait(10); // for some reason windows tend to stuck with position less with wait here
 			WindowUtils.SetLocation(windowHandle, newX, newY); 
-			BFS.General.ThreadWait(10);
+			// BFS.General.ThreadWait(10);
 			windowRect = WindowUtils.GetBounds(windowHandle);
-			bool locationXSetOk = windowRect.X == newX;
-			
-			if (!locationXSetOk)
+			bool locationSetOk = windowRect.X == newX && windowRect.Y == newY;
+
+			// if (!locationSetOk)
+			// {
+
+			// 	// MessageBox.Show($"Trying force window update for  window |{text}|");
+			// 	WindowUtils.SetLocation(windowHandle, newX, newY); 
+			// 	// WindowUtils.RedrawWindow(windowHandle);
+			// 	WindowUtils.ForceUpdateWindow(windowHandle);
+			// 	// WindowUtils.InvalidateRectangle(windowHandle);
+			// 	// BFS.General.ThreadWait(10);
+			// 	windowRect = WindowUtils.GetBounds(windowHandle);
+			// 	locationSetOk = windowRect.X == newX && windowRect.Y == newY;
+
+			// 	if (!locationSetOk)
+			// 	{
+			// 		// string text = BFS.Window.GetText(windowHandle);
+			// 		// MessageBox.Show($"pos wrong after redraw for window |{text}| [{windowRect}]\n\n" + 
+			// 		//                 $"Class:\n{BFS.Window.GetClass(windowHandle)}\n\n" + 
+			// 		// 				$"horshift {horShift} vershift{verShift}\n\n" + 
+			// 		// 				$"requested x: {newX} requested y: {newY}");
+			// 	}
+			// 	else
+			// 	{
+			// 		// string text = BFS.Window.GetText(windowHandle);
+			// 		// MessageBox.Show($"pos FIXED after redraw for window |{text}| [{windowRect}]\n\n" + 
+			// 		//                 $"Class:\n{BFS.Window.GetClass(windowHandle)}\n\n" + 
+			// 		// 				$"horshift {horShift} vershift{verShift}\n\n" + 
+			// 		// 				$"requested x: {newX} requested y: {newY}");
+			// 	}
+			// }
+			// locationSetOk = windowRect.X == newX && windowRect.Y == newY;
+
+			if (!locationSetOk)
 			{
-				BFS.General.ThreadWait(100);
-				windowRect = WindowUtils.GetBounds(windowHandle);
-				locationXSetOk = windowRect.X == newX;
+				if (windowLazyShift.ContainsKey(windowHandle))
+				{
+					int lazyXold = windowLazyShift[windowHandle].XShift;
+					int lazyYold = windowLazyShift[windowHandle].YShift;
+					int lazyXnew = lazyXold + horShift;
+					int lazyYnew = lazyYold + verShift;
+
+					// MessageBox.Show($"saving more lazy shift |{text}|\nX: {lazyXold}->{lazyXnew}\nY{lazyYold}->{lazyYnew}");
+				}
+				else
+				{
+					// MessageBox.Show($"saving new lazy shift |{text}|\nX: {horShift}\nY{verShift}");
+					windowLazyShift.Add(windowHandle, new WindowLazyShift { XShift = horShift, YShift = verShift });
+				}
+			}
+			else
+			{
+				if (windowLazyShift.ContainsKey(windowHandle))
+				{
+					// MessageBox.Show($"Removing lazy shift data for |{text}| because location fixed");
+					windowLazyShift.Remove(windowHandle);
+				}
 			}
 
-			int counterX = 0;
-			while(!locationXSetOk && counterX <= MAX_MOVE_STUBBORN_RETRIES)
-			{
-				// MessageBox.Show($"[{counterX}] Moving window {BFS.Window.GetText(windowHandle)} [{windowRect.ToString()}] failed for X. requested.{newX} actual{windowRect.X} increasing move to {newX + Math.Sign(horShift)}");
-				newX = newX + Math.Sign(horShift);
-				WindowUtils.SetLocation(windowHandle, newX, newY); 
-				BFS.General.ThreadWait(10);
-				windowRect = WindowUtils.GetBounds(windowHandle);
-				locationXSetOk = windowRect.X == newX;
-				// MessageBox.Show("[Moved window to pos " + WindowUtils.GetBounds(windowHandle).ToString() + " ok? " + locationXSetOk);
-				counterX++;
-			}
+			// if (!locationXSetOk)
+			// {
+			// 	BFS.General.ThreadWait(100);
+			// 	windowRect = WindowUtils.GetBounds(windowHandle);
+			// 	locationXSetOk = windowRect.X == newX;
+			// }
 
-			windowRect = WindowUtils.GetBounds(windowHandle);
-			bool locationYSetOk = windowRect.Y == newY;
+			// int counterX = 0;
+			// while(!locationXSetOk && counterX <= MAX_MOVE_STUBBORN_RETRIES)
+			// {
+			// 	// MessageBox.Show($"[{counterX}] Moving window {BFS.Window.GetText(windowHandle)} [{windowRect.ToString()}] failed for X. requested.{newX} actual{windowRect.X} increasing move to {newX + Math.Sign(horShift)}");
+			// 	newX = newX + Math.Sign(horShift);
+			// 	WindowUtils.SetLocation(windowHandle, newX, newY); 
+			// 	BFS.General.ThreadWait(10);
+			// 	windowRect = WindowUtils.GetBounds(windowHandle);
+			// 	locationXSetOk = windowRect.X == newX;
+			// 	// MessageBox.Show("[Moved window to pos " + WindowUtils.GetBounds(windowHandle).ToString() + " ok? " + locationXSetOk);
+			// 	counterX++;
+			// }
 
-			if (!locationYSetOk)
-			{
-				BFS.General.ThreadWait(100);
-				windowRect = WindowUtils.GetBounds(windowHandle);
-				locationYSetOk = windowRect.Y == newY;
-			}
+			// windowRect = WindowUtils.GetBounds(windowHandle);
+			// bool locationYSetOk = windowRect.Y == newY;
 
-			int counterY = 0;
-			while(!locationYSetOk && counterY <= MAX_MOVE_STUBBORN_RETRIES)
-			{
-				// MessageBox.Show($"[{counterY}] Moving window {BFS.Window.GetText(windowHandle)} [{windowRect.ToString()}] failed for Y. requested.{newY} actual{windowRect.Y} increasing move to {newY + Math.Sign(verShift)}");
-				newY = newY + Math.Sign(verShift);
-				WindowUtils.SetLocation(windowHandle, newX, newY); 
-				BFS.General.ThreadWait(10);
-				windowRect = WindowUtils.GetBounds(windowHandle);
-				locationYSetOk = windowRect.Y == newY;
-				// MessageBox.Show("Moved window to pos " + WindowUtils.GetBounds(windowHandle).ToString() + " ok? " + locationYSetOk);
-				counterY++;
-			}
+			// if (!locationYSetOk)
+			// {
+			// 	BFS.General.ThreadWait(100);
+			// 	windowRect = WindowUtils.GetBounds(windowHandle);
+			// 	locationYSetOk = windowRect.Y == newY;
+			// }
 
-			if(MAX_MOVE_STUBBORN_RETRIES != 0 && (counterX > MAX_MOVE_STUBBORN_RETRIES || counterY > MAX_MOVE_STUBBORN_RETRIES) )
-			{
-				string name = BFS.Window.GetText(windowHandle);
-				MessageBox.Show($"Reached limit of moving stubborn windows retries: X.{counterX} Y.{counterY} / {MAX_MOVE_STUBBORN_RETRIES} for window {name} [{windowRect}]\n\nClass:\n{BFS.Window.GetClass(windowHandle)}\n\nhorshift {horShift} vershift{verShift}");
-			}
+			// int counterY = 0;
+			// while(!locationYSetOk && counterY <= MAX_MOVE_STUBBORN_RETRIES)
+			// {
+			// 	// MessageBox.Show($"[{counterY}] Moving window {BFS.Window.GetText(windowHandle)} [{windowRect.ToString()}] failed for Y. requested.{newY} actual{windowRect.Y} increasing move to {newY + Math.Sign(verShift)}");
+			// 	newY = newY + Math.Sign(verShift);
+			// 	WindowUtils.SetLocation(windowHandle, newX, newY); 
+			// 	BFS.General.ThreadWait(10);
+			// 	windowRect = WindowUtils.GetBounds(windowHandle);
+			// 	locationYSetOk = windowRect.Y == newY;
+			// 	// MessageBox.Show("Moved window to pos " + WindowUtils.GetBounds(windowHandle).ToString() + " ok? " + locationYSetOk);
+			// 	counterY++;
+			// }
+
+			// if(MAX_MOVE_STUBBORN_RETRIES != 0 && (counterX > MAX_MOVE_STUBBORN_RETRIES || counterY > MAX_MOVE_STUBBORN_RETRIES) )
+			// {
+			// 	string name = BFS.Window.GetText(windowHandle);
+			// 	MessageBox.Show($"Reached limit of moving stubborn windows retries: X.{counterX} Y.{counterY} / {MAX_MOVE_STUBBORN_RETRIES} for window {name} [{windowRect}]\n\nClass:\n{BFS.Window.GetClass(windowHandle)}\n\nhorshift {horShift} vershift{verShift}");
+			// }
 		}
 
 
