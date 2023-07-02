@@ -153,6 +153,7 @@
 		public static bool enableWindowsPositionTimedShift = false;
 
 		public static bool debugWindowFiltering = false;
+		public static bool debugMargins = false;
 
 		public static string topMarginKey = "topMarginKey";
 		public static string bottomMarginKey = "bottomMarginKey";
@@ -176,7 +177,7 @@
 		public static string lastHorShiftKey = "lastHorShiftKey";
 		public static string lastVerShiftKey = "lastVerShiftKey";
 
-		public static uint moveWindowTimerDelay = 1000; 
+		public static uint moveWindowTimerDelay = 5000; 
 		public static int MAX_MOVE_STUBBORN_RETRIES = 10;
 
 		public static string KEY_SHIFT = "16";
@@ -188,13 +189,15 @@
 		// public static int FILTER_MONITOR_WIDTH = 1920;
 		public static int FILTER_MONITOR_HEIGHT = 2160;
 		// public static int FILTER_MONITOR_HEIGHT = 1200;
+
+		public static readonly int LAZY_POSITION_THRESHOLD = 15;
 			
 		public class WindowLazyShift
 		{
-			public int XShift { get; set; }
-			public int YShift { get; set; }
+			public int xLazyPos { get; set; }
+			public int yLazyPos { get; set; }
 		}
-		public static Dictionary<IntPtr, WindowLazyShift> windowLazyShift = new Dictionary<IntPtr, WindowLazyShift>();
+		public static Dictionary<IntPtr, WindowLazyShift> windowLazyPos = new Dictionary<IntPtr, WindowLazyShift>();
 		public enum WindowHorizontalPosition
 		{
 			Left,
@@ -302,12 +305,38 @@
 			{
 				if(functionName != "StartMovingWindows")
 				{
-					if (windowLazyShift.ContainsKey(windowHandle))
+					if (windowLazyPos.ContainsKey(windowHandle))
 					{
 						// string text = BFS.Window.GetText(windowHandle);
 						// MessageBox.Show($"Removing lazy shift data for |{text}| because new location from func {functionName}");
-						windowLazyShift.Remove(windowHandle);
+						windowLazyPos.Remove(windowHandle);
 					}
+					if (debugMargins)
+					{
+						string text = BFS.Window.GetText(windowHandle);
+						Rectangle monitorRect = getMouseMonitorBounds();
+						int topMargin = getKeyValForMonitor(monitorRect, topMarginKey);
+						int bottomMargin = getKeyValForMonitor(monitorRect, bottomMarginKey);
+						int leftMargin = getKeyValForMonitor(monitorRect, leftMarginKey);
+						int rightMargin = getKeyValForMonitor(monitorRect, rightMarginKey);
+						int horizontalTopSplit = getKeyValForMonitor(monitorRect, horizontalTopSplitKey);
+						int horizontalMiddleSplit = getKeyValForMonitor(monitorRect, horizontalMiddleSplitKey);
+						int horizontalBottomSplit = getKeyValForMonitor(monitorRect, horizontalBottomSplitKey);
+						int verticalLeftSplit = getKeyValForMonitor(monitorRect, verticalLeftSplitKey);
+						int verticalMiddleSplit = getKeyValForMonitor(monitorRect, verticalMiddleSplitKey);
+						int verticalRightSplit = getKeyValForMonitor(monitorRect, verticalRightSplitKey);
+
+						int verMarginsDirection = getKeyValForMonitor(monitorRect, verMarginsDirectionKey);
+						int horMarginsDirection = getKeyValForMonitor(monitorRect, horMarginsDirectionKey);
+
+						MessageBox.Show($"Margins for window |{text}|\n\n" + 
+						$"topMargin.{topMargin} bottomMargin.{bottomMargin}\nleftMargin.{leftMargin} rightMargin.{rightMargin}\n\n" + 
+						$"horizontalTopSplit.{horizontalTopSplit} horizontalMiddleSplit.{horizontalMiddleSplit} horizontalBottomSplit.{horizontalBottomSplit}\n\n" + 
+						$"verticalLeftSplit.{verticalLeftSplit} verticalMiddleSplit.{verticalMiddleSplit} verticalRightSplit.{verticalRightSplit}\n\n" + 
+						$"verMarginsDirection.{verMarginsDirection}  horMarginsDirection.{horMarginsDirection}" 
+						);
+					}
+
 				}
 				method.Invoke(null, new object[] { windowHandle });
 			}
@@ -1468,6 +1497,7 @@
 			MessageBox.Show($"Did not find ANY monitor for window {windowID} [X {windowRect.X}, Y {windowRect.Y}, Width {windowRect.Width}, Height {windowRect.Height}]");
 			return default; 
 		}
+
 		public static void SetNewLocation(IntPtr windowHandle, int horShift, int verShift)
 		{
 			string text = BFS.Window.GetText(windowHandle);
@@ -1476,21 +1506,35 @@
 			Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
 			if(windowRect.Width == 0 || windowRect.Height == 0)
 			{
-				MessageBox.Show($"Skipping move for disappeared window |{text}| [{windowRect}]\n\nClass:\n{BFS.Window.GetClass(windowHandle)}\n\nhorshift {horShift} vershift{verShift}"); // todo remove
+				// MessageBox.Show($"Skipping move for disappeared window |{text}| [{windowRect}]\n\nClass:\n{BFS.Window.GetClass(windowHandle)}\n\nhorshift {horShift} vershift{verShift}"); // todo remove
 				return;
 			}
 
 			int newX = windowRect.X + horShift;
 			int newY = windowRect.Y + verShift;
 
-			if (windowLazyShift.ContainsKey(windowHandle))
+			if (windowLazyPos.ContainsKey(windowHandle))
 			{
-				int newXwithLazy = newX + windowLazyShift[windowHandle].XShift;
-				int newYwithLazy = newY + windowLazyShift[windowHandle].YShift;
+				int lazyXpos = windowLazyPos[windowHandle].xLazyPos;
+				int lazyYpos = windowLazyPos[windowHandle].yLazyPos;
 
-				// MessageBox.Show($"Increasing position because found lazy |{text}|\nX: {newX}->{newXwithLazy}\nY{newY}->{newYwithLazy}");
-				newX = newXwithLazy;
-				newY = newYwithLazy;
+				int xdiff = Math.Abs(windowRect.X - lazyXpos);
+				int ydiff =  Math.Abs(windowRect.Y - lazyYpos);
+				if(xdiff > LAZY_POSITION_THRESHOLD || ydiff > LAZY_POSITION_THRESHOLD)
+				{
+					// MessageBox.Show($"Invalidating lazy values because too much difference X.{xdiff} Y.{ydiff}");
+					windowLazyPos.Remove(windowHandle);
+				}
+				else
+				{
+					int newXwithLazy = horShift + lazyXpos;
+					int newYwithLazy = verShift + lazyYpos;
+
+					// MessageBox.Show($"Using lazy postion + current shift |{text}|\nX: {newX}->{newXwithLazy}[{horShift}]\nY{newY}->{newYwithLazy}[{verShift}]");
+					newX = newXwithLazy;
+					newY = newYwithLazy;
+				}
+
 			}
 
 			// MessageBox.Show($"moving newX {newX} newT {newY}");
@@ -1500,112 +1544,34 @@
 			windowRect = WindowUtils.GetBounds(windowHandle);
 			bool locationSetOk = windowRect.X == newX && windowRect.Y == newY;
 
-			// if (!locationSetOk)
-			// {
-
-			// 	// MessageBox.Show($"Trying force window update for  window |{text}|");
-			// 	WindowUtils.SetLocation(windowHandle, newX, newY); 
-			// 	// WindowUtils.RedrawWindow(windowHandle);
-			// 	WindowUtils.ForceUpdateWindow(windowHandle);
-			// 	// WindowUtils.InvalidateRectangle(windowHandle);
-			// 	// BFS.General.ThreadWait(10);
-			// 	windowRect = WindowUtils.GetBounds(windowHandle);
-			// 	locationSetOk = windowRect.X == newX && windowRect.Y == newY;
-
-			// 	if (!locationSetOk)
-			// 	{
-			// 		// string text = BFS.Window.GetText(windowHandle);
-			// 		// MessageBox.Show($"pos wrong after redraw for window |{text}| [{windowRect}]\n\n" + 
-			// 		//                 $"Class:\n{BFS.Window.GetClass(windowHandle)}\n\n" + 
-			// 		// 				$"horshift {horShift} vershift{verShift}\n\n" + 
-			// 		// 				$"requested x: {newX} requested y: {newY}");
-			// 	}
-			// 	else
-			// 	{
-			// 		// string text = BFS.Window.GetText(windowHandle);
-			// 		// MessageBox.Show($"pos FIXED after redraw for window |{text}| [{windowRect}]\n\n" + 
-			// 		//                 $"Class:\n{BFS.Window.GetClass(windowHandle)}\n\n" + 
-			// 		// 				$"horshift {horShift} vershift{verShift}\n\n" + 
-			// 		// 				$"requested x: {newX} requested y: {newY}");
-			// 	}
-			// }
-			// locationSetOk = windowRect.X == newX && windowRect.Y == newY;
 
 			if (!locationSetOk)
 			{
-				if (windowLazyShift.ContainsKey(windowHandle))
+				if (windowLazyPos.ContainsKey(windowHandle))
 				{
-					int lazyXold = windowLazyShift[windowHandle].XShift;
-					int lazyYold = windowLazyShift[windowHandle].YShift;
-					int lazyXnew = lazyXold + horShift;
-					int lazyYnew = lazyYold + verShift;
+					int lazyXold = windowLazyPos[windowHandle].xLazyPos;
+					int lazyYold = windowLazyPos[windowHandle].yLazyPos;
 
-					// MessageBox.Show($"saving more lazy shift |{text}|\nX: {lazyXold}->{lazyXnew}\nY{lazyYold}->{lazyYnew}");
+					// MessageBox.Show($"saving updated lazy pos |{text}|\nX: {lazyXold}->{newX}\nY{lazyYold}->{newY}");
+					windowLazyPos[windowHandle].xLazyPos = newX;
+					windowLazyPos[windowHandle].yLazyPos = newY;
 				}
 				else
 				{
-					// MessageBox.Show($"saving new lazy shift |{text}|\nX: {horShift}\nY{verShift}");
-					windowLazyShift.Add(windowHandle, new WindowLazyShift { XShift = horShift, YShift = verShift });
+					// MessageBox.Show($"saving new lazy pos |{text}|\nX: {newX}\nY{newY}");
+					windowLazyPos.Add(windowHandle, new WindowLazyShift { xLazyPos = newX, yLazyPos = newY });
 				}
 			}
 			else
 			{
-				if (windowLazyShift.ContainsKey(windowHandle))
+				if (windowLazyPos.ContainsKey(windowHandle))
 				{
 					// MessageBox.Show($"Removing lazy shift data for |{text}| because location fixed");
-					windowLazyShift.Remove(windowHandle);
+					windowLazyPos.Remove(windowHandle);
 				}
 			}
 
-			// if (!locationXSetOk)
-			// {
-			// 	BFS.General.ThreadWait(100);
-			// 	windowRect = WindowUtils.GetBounds(windowHandle);
-			// 	locationXSetOk = windowRect.X == newX;
-			// }
-
-			// int counterX = 0;
-			// while(!locationXSetOk && counterX <= MAX_MOVE_STUBBORN_RETRIES)
-			// {
-			// 	// MessageBox.Show($"[{counterX}] Moving window {BFS.Window.GetText(windowHandle)} [{windowRect.ToString()}] failed for X. requested.{newX} actual{windowRect.X} increasing move to {newX + Math.Sign(horShift)}");
-			// 	newX = newX + Math.Sign(horShift);
-			// 	WindowUtils.SetLocation(windowHandle, newX, newY); 
-			// 	BFS.General.ThreadWait(10);
-			// 	windowRect = WindowUtils.GetBounds(windowHandle);
-			// 	locationXSetOk = windowRect.X == newX;
-			// 	// MessageBox.Show("[Moved window to pos " + WindowUtils.GetBounds(windowHandle).ToString() + " ok? " + locationXSetOk);
-			// 	counterX++;
-			// }
-
-			// windowRect = WindowUtils.GetBounds(windowHandle);
-			// bool locationYSetOk = windowRect.Y == newY;
-
-			// if (!locationYSetOk)
-			// {
-			// 	BFS.General.ThreadWait(100);
-			// 	windowRect = WindowUtils.GetBounds(windowHandle);
-			// 	locationYSetOk = windowRect.Y == newY;
-			// }
-
-			// int counterY = 0;
-			// while(!locationYSetOk && counterY <= MAX_MOVE_STUBBORN_RETRIES)
-			// {
-			// 	// MessageBox.Show($"[{counterY}] Moving window {BFS.Window.GetText(windowHandle)} [{windowRect.ToString()}] failed for Y. requested.{newY} actual{windowRect.Y} increasing move to {newY + Math.Sign(verShift)}");
-			// 	newY = newY + Math.Sign(verShift);
-			// 	WindowUtils.SetLocation(windowHandle, newX, newY); 
-			// 	BFS.General.ThreadWait(10);
-			// 	windowRect = WindowUtils.GetBounds(windowHandle);
-			// 	locationYSetOk = windowRect.Y == newY;
-			// 	// MessageBox.Show("Moved window to pos " + WindowUtils.GetBounds(windowHandle).ToString() + " ok? " + locationYSetOk);
-			// 	counterY++;
-			// }
-
-			// if(MAX_MOVE_STUBBORN_RETRIES != 0 && (counterX > MAX_MOVE_STUBBORN_RETRIES || counterY > MAX_MOVE_STUBBORN_RETRIES) )
-			// {
-			// 	string name = BFS.Window.GetText(windowHandle);
-			// 	MessageBox.Show($"Reached limit of moving stubborn windows retries: X.{counterX} Y.{counterY} / {MAX_MOVE_STUBBORN_RETRIES} for window {name} [{windowRect}]\n\nClass:\n{BFS.Window.GetClass(windowHandle)}\n\nhorshift {horShift} vershift{verShift}");
-			// }
-		}
+		} // SetNewLocation
 
 
 		public static string MergeKeyCodes(params string[] keyCodes)
