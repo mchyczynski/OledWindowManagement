@@ -390,13 +390,13 @@
 				else // outside monitor up and down, move window down to show top
 				{
 					resultDirection = 1;
-					MessageBox.Show($"warning window {name} [{movingRect.ToString()}] both to high and too low"); // todo remove?
+					// MessageBox.Show($"warning window {name} [{movingRect.ToString()}] both to high and too low");
 				}
 			} 
 			else // window will never fit inside monitor borders because too high
 			{
 				resultDirection = 0;
-				MessageBox.Show($"window {name} [{movingRect.ToString()}] will never fit inside monitor borders because too high"); // todo remove?
+				// MessageBox.Show($"window {name} [{movingRect.ToString()}] will never fit inside monitor borders because too high");
 			}
 			BFS.ScriptSettings.WriteValue(directionKey, resultDirection.ToString());
 			// MessageBox.Show($"decideVerDirection movingRect[{movingRect.ToString()} directionKey {directionKey} [{name}]] >>>>>>>>{resultDirection}");
@@ -432,14 +432,14 @@
 				else // outside monitor left and right, move window to the right to show left side
 				{
 					resultDirection = 1;
-					MessageBox.Show($"warning window {name} [{movingRect.ToString()}] both too right and too left"); // todo remove?
+					// MessageBox.Show($"warning window {name} [{movingRect.ToString()}] both too right and too left");
 				}
 			}
 			else // window will never fit inside monitor borders bevause too wide
 			{
 
 				resultDirection = 0;
-				MessageBox.Show($"window {name} [{movingRect.ToString()}] will never fit inside monitor borders because too wide"); // todo remove?
+				// MessageBox.Show($"window {name} [{movingRect.ToString()}] will never fit inside monitor borders because too wide");
 			}
 			BFS.ScriptSettings.WriteValue(directionKey, resultDirection.ToString());
 			// MessageBox.Show($"decideHorDirection movingRect[{movingRect.ToString()} directionKey {directionKey} [{name}]] >>>>>> {resultDirection}");
@@ -477,7 +477,7 @@
 			}
 			else
 			{
-				MessageBox.Show($"Error decideVerDistance direction = 0");
+				// MessageBox.Show($"Error decideVerDistance direction = 0");
 			}
 
 			return verShiftDefaultDistance;
@@ -514,7 +514,7 @@
 			}
 			else
 			{
-				MessageBox.Show($"Error decideHorDistance direction = 0");
+				// MessageBox.Show($"Error decideHorDistance direction = 0");
 			}
 
 			return horShiftDefaultDistance;
@@ -620,7 +620,8 @@
 
 			if(horShift == 0 && verShift == 0)
 			{
-				MessageBox.Show($"Error OUTSIDE MARGINS no movement horShift {horShift} verShift {verShift} "); // todo remove?
+				MessageBox.Show($"Error OUTSIDE MARGINS no movement horShift {horShift} verShift {verShift} for window |{name}| [{windowRect}]\n\nClass:\n{BFS.Window.GetClass(windowHandle)}"); // todo remove?
+
 			}
 
 			// MessageBox.Show($"HandleWindowOutsideMargins [{name}]\n {monitorRect} // {windowRect}\n verdir.{verDirection} hordir{horDirection}\nvershift.{verShift} horshift.{horShift} ");
@@ -1388,6 +1389,12 @@
 			// MessageBox.Show($"moving {namess}");
 			
 			Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
+			if(windowRect.Width == 0 || windowRect.Height == 0)
+			{
+				string name = BFS.Window.GetText(windowHandle); // todo remove message
+				MessageBox.Show($"Skipping move for disappeared window |{name}| [{windowRect}]\n\nClass:\n{BFS.Window.GetClass(windowHandle)}\n\nhorshift {horShift} vershift{verShift}");
+				return;
+			}
 
 			string verLastShiftForWindowKey = windowHandle.ToString() + lastVerShiftKey;
 			string horLastShiftForWindowKey = windowHandle.ToString() + lastHorShiftKey;
@@ -1448,7 +1455,7 @@
 			if(MAX_MOVE_STUBBORN_RETRIES != 0 && (counterX > MAX_MOVE_STUBBORN_RETRIES || counterY > MAX_MOVE_STUBBORN_RETRIES) )
 			{
 				string name = BFS.Window.GetText(windowHandle);
-				MessageBox.Show($"Reached limit of moving stubborn windows retries: X.{counterX} Y.{counterY} / {MAX_MOVE_STUBBORN_RETRIES} for window {name} [{windowRect}]\n\nClass:\n{BFS.Window.GetClass(windowHandle)}");
+				MessageBox.Show($"Reached limit of moving stubborn windows retries: X.{counterX} Y.{counterY} / {MAX_MOVE_STUBBORN_RETRIES} for window {name} [{windowRect}]\n\nClass:\n{BFS.Window.GetClass(windowHandle)}\n\nhorshift {horShift} vershift{verShift}");
 			}
 		}
 
@@ -1507,11 +1514,24 @@
 				if(classname.StartsWith("DFTaskbar") || 
 				   classname.StartsWith("DFTitleBarWindow") ||
 				   classname.StartsWith("Shell_TrayWnd") || 
+				   classname.StartsWith("tooltips") ||
+				   classname.StartsWith("Shell_InputSwitchTopLevelWindow") || // language swich in taskbar
 				   classname.StartsWith("Windows.UI.Core.CoreWindow") ||  // Start and Search windows
-				   classname.StartsWith("Progman") ) // Program Manager
+				   classname.StartsWith("Progman") || // Program Manager
+				   classname.StartsWith("SizeTipClass") ) // When resizing
 				{
 					if (debugWindowFiltering) MessageBox.Show($"Filtering class out\n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
-					if(!string.IsNullOrEmpty(text) && text != "Search" && text != "Start" && text != "Program Manager")
+					if(!string.IsNullOrEmpty(text)  // todo remove
+					    && text != "action centre" 
+					    && text != "Input Flyout" 
+					    && text != "Windows Ink Workspace" 
+					    && text != "Date and Time Information" 
+					    && text != "Network Connections" 
+					    && text != "Battery Information" 
+					    && text != "Search" 
+						&& text != "Start" 
+						&& text != "Program Manager"
+						&& text != "Volume Control")
 					{
 						MessageBox.Show($"WARNING filtering out by class but text is not empty nor blacklisted \n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
 					}
@@ -1526,10 +1546,17 @@
 				}
 
 				if (string.IsNullOrEmpty(text) 
-				    || text == "Program Manager"
+				    || text == "Program Manager" // also class Progman
+				    || text == "Volume Mixer" // can be moved but prefer not to
 				    || text == "Snap Assist"
-				    || text == "Start"
-				    || text == "Search")
+				    || text == "Greenshot capture form" // when selecting area to screenshot (also maybe can be filtered out by size of all monitors)
+				    || text == "Battery Information" // also class Windows.UI.Core.CoreWindow
+				    || text == "Date and Time Information" // also class Windows.UI.Core.CoreWindow
+				    || text == "Network Connections" // also class Windows.UI.Core.CoreWindow
+				    || text == "Volume Control" // also class Windows.UI.Core.CoreWindow
+				    || text == "Start" // also class Windows.UI.Core.CoreWindow
+				    || text == "Search" // also class Windows.UI.Core.CoreWindow
+					)
 				{
 					if (debugWindowFiltering) MessageBox.Show($"Filtering text out\n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
 					return false;
@@ -1544,16 +1571,16 @@
 					return false;
 				}
 
-				if (currentWindowMonitorBounds.Width == windowRect.Width && 
-					currentWindowMonitorBounds.Height == windowRect.Height)
+				if (windowRect.Width >= currentWindowMonitorBounds.Width && 
+					windowRect.Height >= currentWindowMonitorBounds.Height )
 				{
 					if (debugWindowFiltering) MessageBox.Show($"Filtering max size out\n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
 					return false;
 				}
 
-				if (windowRect.Width == 0 || windowRect.Height == 0)
+				if (windowRect.Width <= 0 || windowRect.Height <= 0)
 				{
-					if (debugWindowFiltering) MessageBox.Show($"Filtering zero size out\n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
+					if (debugWindowFiltering) MessageBox.Show($"Filtering zero/negative size out\n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
 					return false;
 				}
 
