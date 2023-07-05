@@ -105,26 +105,13 @@
 				shadow.Top = Math.Abs(includeShadow.Top - excludeShadow.Top);// +1;
 				shadow.Bottom = Math.Abs(includeShadow.Bottom - excludeShadow.Bottom);//+1;
 
-				int width, height;
-				if(w > 0 && h > 0) // width and height explicitly requested
-				{
-					// compensate requested width and height with shadow
-					width = w + shadow.Right + shadow.Left;
-					height = h + shadow.Bottom + shadow.Top;
-				}
-				else // w=0 & h=0 (size no change) or incorrect (negative)
-				{
-					width = includeShadow.Right - includeShadow.Left;
-					height = includeShadow.Bottom - includeShadow.Top;
-				}
-
+				// compensate requested x, y, width and height with shadow
 				Rectangle result = new Rectangle(
 					x - shadow.Left, // windowX
 					y - shadow.Top, // windowY
-					width, // windowWidth
-					height // windowHeight
+					w + shadow.Right + shadow.Left, // windowWidth
+					h + shadow.Bottom + shadow.Top // windowHeight
 				);
-
 
 				// RECT tmprequested = new RECT();
 				// tmprequested.Left = x;
@@ -150,6 +137,12 @@
 				Rectangle newPos = CompensateForShadow(windowHandle, x, y, w, h);
 
 				uint flags = SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_FRAMECHANGED;
+
+				if(w == 0 && h == 0)
+				{
+					flags = flags | SWP_NOSIZE;
+				}
+
 				if (!SetWindowPos(windowHandle, windowHandle, newPos.X, newPos.Y, newPos.Width, newPos.Height, flags))
 				{
 					int errorCode = Marshal.GetLastWin32Error();
@@ -522,25 +515,33 @@
 
 		public static bool wasWindowInsideMargins(IntPtr windowHandle)
 		{
-			// todo take lazy shift saved values into account when calculating if in margins
 			Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
 			Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
 
 			int verLastMarginShift = getKeyValForMonitor(monitorRect, lastVerShiftKey);
 			int horLastMarginShift = getKeyValForMonitor(monitorRect, lastHorShiftKey);
 
-			int topMarginOld = getKeyValForMonitor(monitorRect, topMarginKey) - verLastMarginShift;
-			int bottomMarginOld = getKeyValForMonitor(monitorRect, bottomMarginKey) - verLastMarginShift;
-			int leftMarginOld = getKeyValForMonitor(monitorRect, leftMarginKey) - horLastMarginShift;
-			int rightMarginOld = getKeyValForMonitor(monitorRect, rightMarginKey) - horLastMarginShift;
-
-			int topMarginCurr = getKeyValForMonitor(monitorRect, topMarginKey); // todo remove
+			int topMarginCurr = getKeyValForMonitor(monitorRect, topMarginKey);
 			int bottomMarginCurr = getKeyValForMonitor(monitorRect, bottomMarginKey);
 			int leftMarginCurr = getKeyValForMonitor(monitorRect, leftMarginKey);
-			int rightMarginCurrd = getKeyValForMonitor(monitorRect, rightMarginKey);
+			int rightMarginCurr = getKeyValForMonitor(monitorRect, rightMarginKey);
+			
+			int topMarginOld = topMarginCurr - verLastMarginShift;
+			int bottomMarginOld = bottomMarginCurr - verLastMarginShift;
+			int leftMarginOld = leftMarginCurr - horLastMarginShift;
+			int rightMarginOld = rightMarginCurr - horLastMarginShift;
 
-			int currLeft = windowRect.X;
-			int currTop = windowRect.Y;
+			int currLeft, currTop;
+			if (windowLazyPos.ContainsKey(windowHandle))
+			{
+				currLeft = windowLazyPos[windowHandle].xLazyPos;
+				currTop = windowLazyPos[windowHandle].yLazyPos;
+			}
+			else
+			{
+				currLeft = windowRect.X;
+				currTop = windowRect.Y;
+			}
 			int currRight = currLeft + windowRect.Width;
 			int currBottom = currTop + windowRect.Height;
 
@@ -553,11 +554,11 @@
 			
 			if(windowIsInsideMargins) // INSIDE margins
 			{
-				// MessageBox.Show($"Window [.L{currLeft} .R{currRight} .T{currTop} .B{currBottom}] was INSIDE margins[.L{leftMarginOld}->{leftMarginCurr} .R{rightMarginOld}->{rightMarginCurrd} .T{topMarginOld}->{topMarginCurr} .B{bottomMarginOld}->{bottomMarginCurr}]");
+				// MessageBox.Show($"Window [.L{currLeft} .R{currRight} .T{currTop} .B{currBottom}] was INSIDE margins[.L{leftMarginOld}->{leftMarginCurr} .R{rightMarginOld}->{rightMarginCurr} .T{topMarginOld}->{topMarginCurr} .B{bottomMarginOld}->{bottomMarginCurr}]");
 			}
 			else // OUTSIDE margins
 			{
-				// MessageBox.Show($"Window [.L{currLeft} .R{currRight} .T{currTop} .B{currBottom}] was outside margins[.L{leftMarginOld}->{leftMarginCurr} .R{rightMarginOld}->{rightMarginCurrd} .T{topMarginOld}->{topMarginCurr} .B{bottomMarginOld}->{bottomMarginCurr}]");
+				//MessageBox.Show($"Window [.L{currLeft} .R{currRight} .T{currTop} .B{currBottom}] was outside margins[.L{leftMarginOld}->{leftMarginCurr} .R{rightMarginOld}->{rightMarginCurr} .T{topMarginOld}->{topMarginCurr} .B{bottomMarginOld}->{bottomMarginCurr}]");
 			}
 
 			return windowIsInsideMargins;
