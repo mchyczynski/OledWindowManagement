@@ -12,23 +12,44 @@
 		public static class WindowUtils
 		{
 			[DllImport("user32.dll", SetLastError = true)]
-			private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+			[return: MarshalAs(UnmanagedType.Bool)]
+			private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags); // including shadow
+			
 			[DllImport("user32.dll", SetLastError = true)]
-			private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+			[return: MarshalAs(UnmanagedType.Bool)]
+			private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect); // including shadow
+			
 			[DllImport("user32.dll", SetLastError = true)]
+			[return: MarshalAs(UnmanagedType.Bool)]
 			private static extern bool RedrawWindow(IntPtr hWnd, IntPtr lprcUpdate, IntPtr hrgnUpdate, uint flags);
+			
 			[DllImport("user32.dll", SetLastError = true)]
+			[return: MarshalAs(UnmanagedType.Bool)]
 			private static extern bool InvalidateRect(IntPtr hWnd, IntPtr lpRect, bool bErase);
+			
 			[DllImport("user32.dll", SetLastError = true)]
+			[return: MarshalAs(UnmanagedType.Bool)]
 			private static extern bool UpdateWindow(IntPtr hWnd);
-
-			[StructLayout(LayoutKind.Sequential)]
+			
+			[DllImport(@"dwmapi.dll")]
+        	private static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out RECT pvAttribute, int cbAttribute);
+			
+			[Serializable, StructLayout(LayoutKind.Sequential)]
 			public struct RECT
 			{
 				public int Left;
 				public int Top;
 				public int Right;
 				public int Bottom;
+
+				public Rectangle ToRectangle()
+				{
+					return Rectangle.FromLTRB(Left, Top, Right, Bottom);
+				}
+				public override string ToString() 
+				{
+					return $"Left.{Left} Right.{Right} Top.{Top} Bottom.{Bottom} // " + ToRectangle().ToString();
+				}
 			}
 
 			private static readonly IntPtr HWND_TOP = new IntPtr(0);
@@ -41,33 +62,101 @@
 			private static readonly uint RDW_INVALIDATE = 0x0001;
 			private static readonly  uint RDW_ALLCHILDREN = 0x0080;
 			private static readonly uint RDW_UPDATENOW = 0x0100;
+			private static readonly int DWMWA_EXTENDED_FRAME_BOUNDS = 0x9;
 
-			public static void SetLocation(IntPtr windowHandle, int x, int y)
+
+			private static bool GetRectangleExcludingShadow(IntPtr handle, out RECT rect)
 			{
-				uint flags = SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_FRAMECHANGED;
-				bool result = SetWindowPos(windowHandle, windowHandle, x, y, 0, 0, flags);
-				if (!result)
+				var result = DwmGetWindowAttribute(handle, DWMWA_EXTENDED_FRAME_BOUNDS, out rect, Marshal.SizeOf(typeof(RECT)));
+
+				// remove additional semi-transparent pixels on borders to minimize gaps between windows
+				rect.Left++;
+				rect.Top++;
+				rect.Bottom--;
+
+				return result >= 0;
+			}
+			private static Rectangle CompensateForShadow(IntPtr windowHandle, int x, int y, int w, int h)
+			{
+				RECT excludeShadow = new RECT();
+				RECT includeShadow = new RECT();
+
+				if (!GetRectangleExcludingShadow(windowHandle, out excludeShadow))
 				{
 					int errorCode = Marshal.GetLastWin32Error();
 					string text = BFS.Window.GetText(windowHandle);
-					Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
-
-					MessageBox.Show($"ERROR SetWindowPos windows API: {errorCode}\n\ntext: |{text}|\n\nrect: {windowRect.ToString()}\n\nrequested pos: x.{x} y.{y}");
+					MessageBox.Show($"ERROR CompensateForShadow-GetWindowRectangle windows API: {errorCode}\n\n" + 
+					                $"text: |{text}|\n\n" + 
+									$"requested pos: x.{x} y.{y} w.{w} h.{h}");
 				}
+
+				if (!GetWindowRect(windowHandle, out includeShadow)) // including shadow
+				{
+					int errorCode = Marshal.GetLastWin32Error();
+					string text = BFS.Window.GetText(windowHandle);
+					MessageBox.Show($"ERROR CompensateForShadow-GetWindowRect windows API: {errorCode}\n\n" + 
+					                $"text: |{text}|\n\n" + 
+									$"requested pos: x.{x} y.{y} w.{w} h.{h}");
+				}
+				
+				RECT shadow = new RECT();
+				shadow.Left = Math.Abs(includeShadow.Left - excludeShadow.Left);//+1;
+				shadow.Right = Math.Abs(includeShadow.Right - excludeShadow.Right);
+				shadow.Top = Math.Abs(includeShadow.Top - excludeShadow.Top);// +1;
+				shadow.Bottom = Math.Abs(includeShadow.Bottom - excludeShadow.Bottom);//+1;
+
+				int width, height;
+				if(w > 0 && h > 0) // width and height explicitly requested
+				{
+					// compensate requested width and height with shadow
+					width = w + shadow.Right + shadow.Left;
+					height = h + shadow.Bottom + shadow.Top;
+				}
+				else // w=0 & h=0 (size no change) or incorrect (negative)
+				{
+					width = includeShadow.Right - includeShadow.Left;
+					height = includeShadow.Bottom - includeShadow.Top;
+				}
+
+				Rectangle result = new Rectangle(
+					x - shadow.Left, // windowX
+					y - shadow.Top, // windowY
+					width, // windowWidth
+					height // windowHeight
+				);
+
+
+				// RECT tmprequested = new RECT();
+				// tmprequested.Left = x;
+				// tmprequested.Right = x+w;
+				// tmprequested.Top = y;
+				// tmprequested.Bottom = y+h;
+				// MessageBox.Show($"Requested: [{tmprequested}]\n\n" +
+				// 				$"Including shadow: [{includeShadow}]\n\n" +
+				// 	            $"Excluding shadow: [{excludeShadow}]\n\n" +
+				// 				$"Shadow: [{shadow}]\n\n"+
+				// 				$"result: [{result}]"
+				// 								);
+				return result;
+			}
+
+			public static void SetLocation(IntPtr windowHandle, int x, int y)
+			{
+				SetSizeAndLocation(windowHandle, x, y, 0, 0);
 			}
 
 			public static void SetSizeAndLocation(IntPtr windowHandle, int x, int y, int w, int h)
 			{
-				uint flags = SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_FRAMECHANGED;
-				bool result = SetWindowPos(windowHandle, windowHandle, x, y, w, h, flags);
+				Rectangle newPos = CompensateForShadow(windowHandle, x, y, w, h);
 
-				if (!result)
+				uint flags = SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER | SWP_FRAMECHANGED;
+				if (!SetWindowPos(windowHandle, windowHandle, newPos.X, newPos.Y, newPos.Width, newPos.Height, flags))
 				{
 					int errorCode = Marshal.GetLastWin32Error();
 					string text = BFS.Window.GetText(windowHandle);
-					Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
-
-					MessageBox.Show($"ERROR SetSizeAndLocation windows API: {errorCode}\n\ntext: |{text}|\n\nrect: {windowRect.ToString()}\n\nrequested pos: x.{x} y.{y} w.{w} h.{h}");
+					MessageBox.Show($"ERROR SetSizeAndLocation-SetWindowPos windows API: {errorCode}\n\n" + 
+					                $"text: |{text}|\n\n" + 
+									$"requested pos: x.{x} y.{y} w.{w} h.{h}");
 				}
 			}
 			public static Rectangle GetBounds(IntPtr windowHandle)
@@ -75,7 +164,7 @@
 				int windowX = 0, windowY = 0, windowWidth = 0, windowHeight = 0;
 				RECT windowRect;
 
-				if (GetWindowRect(windowHandle, out windowRect))
+				if (GetRectangleExcludingShadow(windowHandle, out windowRect))
 				{
 					windowX = windowRect.Left;
 					windowY = windowRect.Top;
@@ -86,9 +175,7 @@
 				{
 					int errorCode = Marshal.GetLastWin32Error();
 					string text = BFS.Window.GetText(windowHandle);
-					Rectangle windowRectangle = WindowUtils.GetBounds(windowHandle);
-
-					MessageBox.Show($"ERROR SetSizeAndLocation windows API: {errorCode}\n\ntext: |{text}|\n\nrect: {windowRectangle.ToString()}");
+					MessageBox.Show($"ERROR GetBounds-GetWindowRect windows API: {errorCode}\n\ntext: |{text}|");
 				}
 
 				Rectangle rect = new Rectangle(
@@ -435,6 +522,7 @@
 
 		public static bool wasWindowInsideMargins(IntPtr windowHandle)
 		{
+			// todo take lazy shift saved values into account when calculating if in margins
 			Rectangle monitorRect = getCurrentWindowMonitorBounds(windowHandle);
 			Rectangle windowRect = WindowUtils.GetBounds(windowHandle);
 
