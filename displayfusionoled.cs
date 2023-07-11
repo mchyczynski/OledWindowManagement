@@ -1719,25 +1719,11 @@
 				   classname.StartsWith("Shell_TrayWnd") || 
 				   classname.StartsWith("tooltips") ||
 				   classname.StartsWith("Shell_InputSwitchTopLevelWindow") || // language swich in taskbar
-				   classname.StartsWith("Windows.UI.Core.CoreWindow") ||  // Start and Search windows
+				   classname.StartsWith("Windows.UI.Core.CoreWindow") ||  // Start, Search, Task View, Jump Lists etc
 				   classname.StartsWith("Progman") || // Program Manager
 				   classname.StartsWith("SizeTipClass") ) // When resizing
 				{
 					if (debugWindowFiltering) MessageBox.Show($"Filtering class out\n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
-					if(!string.IsNullOrEmpty(text)  // todo remove
-					    && text != "action centre" 
-					    && text != "Input Flyout" 
-					    && text != "Windows Ink Workspace" 
-					    && text != "Date and Time Information" 
-					    && text != "Network Connections" 
-					    && text != "Battery Information" 
-					    && text != "Search" 
-						&& text != "Start" 
-						&& text != "Program Manager"
-						&& text != "Volume Control")
-					{
-						MessageBox.Show($"WARNING filtering out by class but text is not empty nor blacklisted \n\ntext:{text}\n\nclass:{classname}\n\nsize:{windowRect.ToString()}");
-					}
 					return false;
 				}
 
